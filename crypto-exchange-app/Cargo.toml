@@ -1,0 +1,31 @@
+[package]
+name = "full-stack-apps"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+diesel = { version = "2.2.0", features = ["postgres", "chrono", "r2d2"] }
+dotenv = "0.15.0"
+chrono = { version = "0.4.19", features = ["clock", "serde"] }
+actix = "0.13.0"
+actix-web = { version = "4.4.0", features = ["openssl"] }
+sqlx = { version = "0.7.3", features = [
+    "postgres",
+    "runtime-tokio",
+    "runtime-tokio-rustls",
+] }
+env_logger = "0.10"
+log = "0.4"
+serde_json = "1.0"
+serde = { version = "1.0.110", features = ["derive"] }
+serde_derive = "1.0"
+r2d2 = "0.8"
+argon2 = "0.5.2"
+rand = "0.8.5"
+jsonwebtoken = "8.3"
+actix-cors = "0.6"
+uuid = { version = "1.4", features = ["v4", "serde"] }
+actix-multipart = "0.6"
+futures = "0.3"
+mime = "0.3"
+sanitize-filename = "0.4"

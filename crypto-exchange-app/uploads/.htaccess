@@ -1,0 +1,5 @@
+# Deny direct access to files
+<FilesMatch "\.(?:jpg|jpeg|png|pdf)$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>

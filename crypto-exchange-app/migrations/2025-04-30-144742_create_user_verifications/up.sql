@@ -1,0 +1,20 @@
+CREATE TABLE user_verifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255) NOT NULL,
+    dob_day INTEGER NOT NULL,
+    dob_month INTEGER NOT NULL,
+    dob_year INTEGER NOT NULL,
+    street_address VARCHAR(255) NOT NULL,
+    apartment VARCHAR(255),
+    city VARCHAR(255) NOT NULL,
+    postal_code VARCHAR(50) NOT NULL,
+    country_code VARCHAR(10) NOT NULL,
+    phone_number VARCHAR(50) NOT NULL,
+    occupation VARCHAR(255) NOT NULL,
+    verification_status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT user_verifications_user_id_unique UNIQUE (user_id)
+);

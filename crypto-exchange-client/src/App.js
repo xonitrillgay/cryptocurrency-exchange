@@ -3,17 +3,18 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import SignUp from './components/SignUp';
 import Login from './components/Login';
 import VerifyIdentity from './components/VerifyIdentity';
+import DocumentUpload from './components/DocumentUpload';
 import './App.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('auth_token');
-  
+
   if (!token) {
     // Redirect to login if not authenticated
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 };
 
@@ -23,13 +24,21 @@ function App() {
       <Routes>
         <Route path="/signup" element={<SignUp />} />
         <Route path="/login" element={<Login />} />
-        <Route 
-          path="/verify" 
+        <Route
+          path="/verify"
           element={
             <ProtectedRoute>
               <VerifyIdentity />
             </ProtectedRoute>
-          } 
+          }
+        />
+        <Route
+          path="/document-upload"
+          element={
+            <ProtectedRoute>
+              <DocumentUpload />
+            </ProtectedRoute>
+          }
         />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

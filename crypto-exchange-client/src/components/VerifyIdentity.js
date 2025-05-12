@@ -34,21 +34,21 @@ function VerifyIdentity() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [apiError, setApiError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
-    const [existingData, setExistingData] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [verificationStatus, setVerificationStatus] = useState(null);
 
     useEffect(() => {
         const fetchVerificationStatus = async () => {
             try {
                 const token = localStorage.getItem('auth_token');
-                
+
                 // If no token, redirect to login
                 if (!token) {
                     console.error("No authentication token found");
                     navigate('/login');
                     return;
                 }
-    
+
                 const response = await fetch('http://localhost:8080/verify/status', {
                     method: 'GET',
                     headers: {
@@ -56,28 +56,33 @@ function VerifyIdentity() {
                         'Content-Type': 'application/json',
                     },
                 });
-                
+
                 // Handle all responses as JSON
                 const data = await response.json();
-                
+
                 if (response.ok) {
+                    // Check if verification exists and has data
                     if (data.verification) {
-                        setExistingData(data.verification);
-                        // Pre-fill form with existing data
+                        const verificationData = data.verification;
+
+                        // Populate form with existing data - match field names with your form
                         setFormData({
-                            first_name: data.verification.first_name || '',
-                            last_name: data.verification.last_name || '',
-                            dob_day: data.verification.dob_day || 0,
-                            dob_month: data.verification.dob_month || 0,
-                            dob_year: data.verification.dob_year || 0,
-                            street_address: data.verification.street_address || '',
-                            apartment: data.verification.apartment || '',
-                            city: data.verification.city || '',
-                            postal_code: data.verification.postal_code || '',
-                            country_code: data.verification.country_code || '',
-                            phone_number: data.verification.phone_number || '',
-                            occupation: data.verification.occupation || ''
+                            first_name: verificationData.first_name || '',
+                            last_name: verificationData.last_name || '',
+                            dob_day: verificationData.dob_day || 0,
+                            dob_month: verificationData.dob_month || 0,
+                            dob_year: verificationData.dob_year || 0,
+                            street_address: verificationData.street_address || '',
+                            apartment: verificationData.apartment || '',
+                            city: verificationData.city || '',
+                            postal_code: verificationData.postal_code || '',
+                            country_code: verificationData.country_code || '',
+                            phone_number: verificationData.phone_number || '',
+                            occupation: verificationData.occupation || ''
                         });
+
+                        // Store verification status to show appropriate UI
+                        setVerificationStatus(data.status);
                     }
                     // If status is "not_submitted", we'll just show the empty form
                 } else {
@@ -96,7 +101,7 @@ function VerifyIdentity() {
                 setIsLoading(false);
             }
         };
-    
+
         fetchVerificationStatus();
     }, [navigate]);
 
@@ -201,7 +206,7 @@ function VerifyIdentity() {
 
                     if (response.ok) {
                         setSuccessMessage('Verification information submitted successfully!');
-                        // You might want to redirect or update UI state here
+                        setVerificationStatus('submitted');
                     } else {
                         setApiError(data.error || 'Failed to submit verification information');
                     }
@@ -424,6 +429,25 @@ function VerifyIdentity() {
                         {isSubmitting ? 'Submitting...' : 'Submit Verification'}
                     </button>
                 </form>
+
+                {(successMessage || verificationStatus) && (
+                    <div className="verification-next-steps">
+                        <div className="success-message">
+                            {successMessage || 'Your personal information has been submitted.'}
+                        </div>
+
+                        <div className="next-steps-card">
+                            <h3>Next Step: Document Verification</h3>
+                            <p>To complete your identity verification, please upload a government-issued ID document.</p>
+                            <button
+                                className="document-upload-button"
+                                onClick={() => navigate('/document-upload')}
+                            >
+                                Proceed to Document Upload
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

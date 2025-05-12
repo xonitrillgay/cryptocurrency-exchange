@@ -28,7 +28,7 @@ use argon2::{
 };
 
 const UPLOAD_DIR: &str =
-    "/home/maria/Documents/full-stack-apps/crypto-exchange-app/uploads/id_documents";
+    "/home/maria/Documents/cryptocurrency-exchange/crypto-exchange-app/uploads/id_documents";
 
 fn is_valid_image(content_type: &Mime) -> bool {
     match content_type.to_string().as_str() {

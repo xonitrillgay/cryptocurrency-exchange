@@ -47,43 +47,44 @@ function Login() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSubmitting(true);
         setApiError('');
 
-        if (validateForm()) {
-            setIsSubmitting(true);
+        // Form validation
+        const validationErrors = validateForm();
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            setIsSubmitting(false);
+            return;
+        }
 
-            try {
-                const response = await fetch('http://localhost:8080/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        email: formData.email,
-                        password: formData.password
-                    }),
-                    credentials: 'include' // This is important for cookies
-                });
+        try {
+            const response = await fetch('http://localhost:8080/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: formData.email,
+                    password: formData.password,
+                }),
+            });
 
-                const data = await response.json();
+            const data = await response.json();
 
-                if (response.ok) {
-                    // Store token if your backend returns one
-                    if (data.token) {
-                        localStorage.setItem('auth_token', data.token);
-                    }
-                    // Redirect to dashboard
-                    navigate('/dashboard');
-                } else {
-                    // API error
-                    setApiError(data.error || 'Invalid email or password');
-                }
-            } catch (error) {
-                setApiError('Server connection error. Please try again later.');
-                console.error('Login error:', error);
-            } finally {
-                setIsSubmitting(false);
+            if (response.ok) {
+                // Store token
+                localStorage.setItem('auth_token', data.token);
+                // Redirect to dashboard instead of verify page
+                navigate('/dashboard');
+            } else {
+                setApiError(data.error || 'Login failed. Please check your credentials.');
             }
+        } catch (error) {
+            console.error('Login error:', error);
+            setApiError('Server connection error. Please try again later.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 

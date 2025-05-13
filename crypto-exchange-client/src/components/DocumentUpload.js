@@ -16,7 +16,7 @@ function DocumentUpload() {
     const fetchVerificationStatus = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        
+
         // If no token, redirect to login
         if (!token) {
           console.error("No authentication token found");
@@ -31,9 +31,9 @@ function DocumentUpload() {
             'Content-Type': 'application/json',
           },
         });
-        
+
         const data = await response.json();
-        
+
         if (response.ok) {
           // Check if the user has already completed basic verification
           if (data.verification) {
@@ -67,24 +67,24 @@ function DocumentUpload() {
     if (!selectedFile) {
       return;
     }
-    
+
     // Check file type
     const fileType = selectedFile.type;
     if (fileType !== 'image/jpeg' && fileType !== 'image/png' && fileType !== 'application/pdf') {
       setApiError('Invalid file type. Please upload a JPG, PNG, or PDF file.');
       return;
     }
-    
+
     // Check file size (limit to 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB in bytes
     if (selectedFile.size > maxSize) {
       setApiError('File size exceeds 5MB limit. Please upload a smaller file.');
       return;
     }
-    
+
     setFile(selectedFile);
     setApiError('');
-    
+
     // Create preview for images
     if (fileType === 'image/jpeg' || fileType === 'image/png') {
       const reader = new FileReader();
@@ -100,15 +100,15 @@ function DocumentUpload() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!file) {
       setApiError('Please select a file to upload');
       return;
     }
-    
+
     setIsSubmitting(true);
     setApiError('');
-    
+
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
@@ -116,11 +116,11 @@ function DocumentUpload() {
         navigate('/login');
         return;
       }
-      
+
       // Create form data
       const formData = new FormData();
       formData.append('document', file);
-      
+
       const response = await fetch('http://localhost:8080/verify/id-document', {
         method: 'POST',
         headers: {
@@ -128,9 +128,9 @@ function DocumentUpload() {
         },
         body: formData
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok) {
         setSuccessMessage('ID document uploaded successfully! It will be reviewed shortly.');
         // Update verification status
@@ -144,6 +144,11 @@ function DocumentUpload() {
         // Clear file selection
         setFile(null);
         setFilePreview(null);
+
+        // Redirect to dashboard after short delay
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 3000);
       } else {
         setApiError(data.error || 'Failed to upload document');
       }
@@ -155,6 +160,10 @@ function DocumentUpload() {
     }
   };
 
+  const navigateToDashboard = () => {
+    navigate('/dashboard');
+  };
+
   const renderStatus = () => {
     if (!verificationStatus || !verificationStatus.id_document) {
       return (
@@ -164,9 +173,9 @@ function DocumentUpload() {
         </div>
       );
     }
-    
+
     const status = verificationStatus.id_document.id_verification_status;
-    
+
     if (status === 'pending_review') {
       return (
         <div className="status-card review">
@@ -189,7 +198,7 @@ function DocumentUpload() {
         </div>
       );
     }
-    
+
     return null;
   };
 
@@ -202,21 +211,21 @@ function DocumentUpload() {
       <div className="document-upload-card">
         <h2>ID Verification</h2>
         <p className="subtitle">Upload a government-issued ID to verify your identity</p>
-        
+
         {renderStatus()}
-        
+
         {apiError && (
           <div className="error-message">
             {apiError}
           </div>
         )}
-        
+
         {successMessage && (
           <div className="success-message">
             {successMessage}
           </div>
         )}
-        
+
         {(!verificationStatus?.id_document || verificationStatus?.id_document?.id_verification_status === 'rejected') && (
           <form onSubmit={handleSubmit}>
             <div className="upload-section">
@@ -230,7 +239,7 @@ function DocumentUpload() {
                   <li>Maximum file size: 5MB</li>
                 </ul>
               </div>
-              
+
               <div className="upload-area">
                 <input
                   type="file"
@@ -243,7 +252,7 @@ function DocumentUpload() {
                   <span className="upload-icon">📄</span>
                   <span>Click to select a file</span>
                 </label>
-                
+
                 {file && (
                   <div className="file-info">
                     <p>Selected file: {file.name}</p>
@@ -251,7 +260,7 @@ function DocumentUpload() {
                     <p>Type: {file.type}</p>
                   </div>
                 )}
-                
+
                 {filePreview && (
                   <div className="image-preview">
                     <img src={filePreview} alt="ID document preview" />
@@ -259,20 +268,39 @@ function DocumentUpload() {
                 )}
               </div>
             </div>
-            
-            <button 
-              type="submit" 
-              className="upload-button" 
+
+            <button
+              type="submit"
+              className="upload-button"
               disabled={isSubmitting || !file}
             >
               {isSubmitting ? 'Uploading...' : 'Upload Document'}
             </button>
           </form>
         )}
-        
-        <div className="back-link">
-          <a href="/verify">← Back to personal information</a>
-        </div>
+
+        {successMessage && (
+          <div className="dashboard-navigation">
+            <p>You will be redirected to your dashboard shortly...</p>
+            <button
+              className="dashboard-button"
+              onClick={navigateToDashboard}
+            >
+              Go to Dashboard Now
+            </button>
+          </div>
+        )}
+
+        {verificationStatus?.id_document && (
+          <div className="dashboard-navigation">
+            <button
+              className="dashboard-button"
+              onClick={navigateToDashboard}
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

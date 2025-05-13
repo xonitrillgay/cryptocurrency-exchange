@@ -225,12 +225,39 @@ h2 {
   color: #64748b;
 }
 
+.dashboard-navigation {
+  margin-top: 25px;
+  text-align: center;
+}
+
+.dashboard-navigation p {
+  margin-bottom: 15px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.dashboard-button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.dashboard-button:hover {
+  background-color: #2563eb;
+}
+
 @media (max-width: 768px) {
   .upload-section {
     flex-direction: column;
     gap: 20px;
   }
-  
+
   .document-upload-card {
     padding: 20px;
   }

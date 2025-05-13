@@ -4,6 +4,11 @@ import SignUp from './components/SignUp';
 import Login from './components/Login';
 import VerifyIdentity from './components/VerifyIdentity';
 import DocumentUpload from './components/DocumentUpload';
+import Dashboard from './components/Dashboard'; // Add this import
+import About from './components/About'; // Add this import
+import Terms from './components/Terms'; // Add this import
+import Privacy from './components/Privacy'; // Add this import
+import Support from './components/Support'; // Add this import
 import './App.css';
 
 // Protected route component
@@ -40,7 +45,20 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/about" element={<About />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
   );

@@ -534,6 +534,80 @@ async fn verification_status(
     }
 }
 
+#[get("/profile")]
+async fn user_profile(
+    pool: web::Data<db::DbPool>,
+    req: HttpRequest,
+) -> Result<HttpResponse, actix_web::Error> {
+    // Extract user_id from JWT token
+    let current_user_id = auth::extract_user_id(&req)?;
+
+    let mut conn = pool.get().map_err(|_| {
+        actix_web::error::ErrorInternalServerError("Failed to get database connection")
+    })?;
+
+    // Get basic user information
+    use schema::users::dsl::*;
+    let user_result = web::block(move || {
+        users
+            .filter(id.eq(current_user_id))
+            .first::<models::User>(&mut *conn)
+            .optional()
+    })
+    .await
+    .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+    match user_result {
+        Ok(Some(user)) => {
+            // Convert to UserResponse to avoid sending password
+            let user_response = models::UserResponse::from(user);
+
+            // Get verification information if available
+            let mut conn = pool.get().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to get database connection")
+            })?;
+
+            use schema::user_verifications::dsl::*;
+            let verification_result = web::block(move || {
+                user_verifications
+                    .filter(user_id.eq(current_user_id))
+                    .first::<models::UserVerification>(&mut *conn)
+                    .optional()
+            })
+            .await
+            .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+            // Create the response based on whether verification data exists
+            match verification_result {
+                Ok(Some(verification)) => Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "user": user_response,
+                    "verification": models::VerificationResponse::from(verification)
+                }))),
+                Ok(None) => {
+                    // User hasn't submitted verification yet
+                    Ok(HttpResponse::Ok().json(serde_json::json!({
+                        "user": user_response,
+                        "verification": null
+                    })))
+                }
+                Err(_) => {
+                    // Still return user data even if verification fetching fails
+                    Ok(HttpResponse::Ok().json(serde_json::json!({
+                        "user": user_response,
+                        "verification": null
+                    })))
+                }
+            }
+        }
+        Ok(None) => Ok(HttpResponse::NotFound().json(serde_json::json!({
+            "error": "User not found"
+        }))),
+        Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+            "error": "Database error when retrieving user data"
+        }))),
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -572,6 +646,7 @@ async fn main() -> std::io::Result<()> {
                     .service(verification_status)
                     .service(upload_id_document),
             )
+            .service(web::scope("/user").service(user_profile))
     })
     .bind(format!("{}:{}", host, port))?
     .run()

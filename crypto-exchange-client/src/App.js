@@ -4,31 +4,40 @@ import SignUp from './components/SignUp';
 import Login from './components/Login';
 import VerifyIdentity from './components/VerifyIdentity';
 import DocumentUpload from './components/DocumentUpload';
-import Dashboard from './components/Dashboard'; // Add this import
-import About from './components/About'; // Add this import
-import Terms from './components/Terms'; // Add this import
-import Privacy from './components/Privacy'; // Add this import
-import Support from './components/Support'; // Add this import
+import Dashboard from './components/Dashboard';
+import About from './components/About';
+import Terms from './components/Terms';
+import Privacy from './components/Privacy';
+import Support from './components/Support';
 import './App.css';
 
-// Protected route component
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('auth_token');
 
-  if (!token) {
-    // Redirect to login if not authenticated
+  if (!token)
     return <Navigate to="/login" replace />;
-  }
 
   return children;
 };
+
+const AuthRoutes = ({ children }) => {
+  const token = localStorage.getItem('auth_token');
+
+  if (token)
+    return <Navigate to="/dashboard" replace />;
+
+  return children;
+}
+
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={
+        <AuthRoutes><SignUp /></AuthRoutes>} />
+          <Route path="/login" element={<AuthRoutes><Login />
+        </AuthRoutes>} />
         <Route
           path="/verify"
           element={

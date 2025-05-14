@@ -724,6 +724,21 @@
     font-weight: bold;
 }
 
+.logout-button {
+    background-color: #ff5757;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.logout-button:hover {
+    background-color: #ff3d3d;
+}
+
 /* Media Queries */
 @media (max-width: 1024px) {
     .feature-cards {

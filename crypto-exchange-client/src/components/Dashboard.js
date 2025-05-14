@@ -10,6 +10,39 @@ function Dashboard() {
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState('');
 
+    // Enhanced function to get proper display name from user data
+    const getDisplayName = (user) => {
+        if (!user) return "Guest";
+
+        // Check if we have user_verification data with first_name and last_name
+        if (user.verification && user.verification.first_name && user.verification.last_name) {
+            return `${user.verification.first_name} ${user.verification.last_name}`;
+        }
+
+        // Check if first_name and last_name are directly on the user object
+        if (user.first_name && user.last_name) {
+            return `${user.first_name} ${user.last_name}`;
+        }
+
+        // Use display_name if available
+        if (user.display_name) {
+            return user.display_name;
+        }
+
+        // Use username if available
+        if (user.username) {
+            return user.username;
+        }
+
+        // Use email without domain as fallback
+        if (user.email) {
+            return user.email.split('@')[0];
+        }
+
+        // If we have an ID but nothing else, just use a friendly format
+        return `User ${user.id ? '#' + user.id : ''}`;
+    };
+
     useEffect(() => {
         const fetchUserData = async () => {
             try {
@@ -63,6 +96,7 @@ function Dashboard() {
                             display_name: getDisplayName(apiUserData)
                         };
 
+                        console.log("user response", userResponse)
                         setUserData(userWithDisplayName);
                         console.log("User data fetched successfully");
                     } else {
@@ -94,6 +128,14 @@ function Dashboard() {
                     if (verificationResponse.ok) {
                         const verificationData = await verificationResponse.json();
                         setVerificationStatus(verificationData);
+
+                        // Add this block - update userData with verification data
+                        if (verificationData && verificationData.verification) {
+                            setUserData(prevUserData => ({
+                                ...prevUserData,
+                                verification: verificationData.verification
+                            }));
+                        }
                     } else {
                         console.warn(`Failed to fetch verification status: ${verificationResponse.status}`);
                         // Set empty verification status as fallback
@@ -221,38 +263,7 @@ function Dashboard() {
         return null;
     };
 
-    // Enhanced function to get proper display name from user data
-    const getDisplayName = (user) => {
-        if (!user) return "Guest";
 
-        // Check if we have user_verification data with first_name and last_name
-        if (user.verification && user.verification.first_name && user.verification.last_name) {
-            return `${user.verification.first_name} ${user.verification.last_name}`;
-        }
-
-        // Check if first_name and last_name are directly on the user object
-        if (user.first_name && user.last_name) {
-            return `${user.first_name} ${user.last_name}`;
-        }
-
-        // Use display_name if available
-        if (user.display_name) {
-            return user.display_name;
-        }
-
-        // Use username if available
-        if (user.username) {
-            return user.username;
-        }
-
-        // Use email without domain as fallback
-        if (user.email) {
-            return user.email.split('@')[0];
-        }
-
-        // If we have an ID but nothing else, just use a friendly format
-        return `User ${user.id ? '#' + user.id : ''}`;
-    };
 
     return (
         <div className="dashboard-container">
@@ -271,6 +282,13 @@ function Dashboard() {
                             {(userData?.first_name?.[0] || userData?.email?.[0] || "U").toUpperCase()}
                         </div>
                     </div>
+                    <button className="logout-button" onClick={() => {
+                        localStorage.removeItem('auth_token');
+                        navigate('/login');
+                    }
+                    }>
+                        Logout
+                    </button>
                 </div>
             </header>
 
@@ -333,9 +351,7 @@ function Dashboard() {
                             <div className="profile-detail-item">
                                 <div className="detail-label">Full Name</div>
                                 <div className="detail-value">
-                                    {(userData?.first_name && userData?.last_name)
-                                        ? `${userData.first_name} ${userData.last_name}`
-                                        : (userData?.first_name || 'Not provided')}
+                                    {userData?.username}
                                 </div>
                             </div>
 

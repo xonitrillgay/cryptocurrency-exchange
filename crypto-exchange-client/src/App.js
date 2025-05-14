@@ -9,6 +9,7 @@ import About from './components/About';
 import Terms from './components/Terms';
 import Privacy from './components/Privacy';
 import Support from './components/Support';
+import AdminPanel from './components/AdminPanel';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -29,14 +30,23 @@ const AuthRoutes = ({ children }) => {
   return children;
 }
 
+const AdminRoute = ({ children }) => {
+  const token = localStorage.getItem('auth_token');
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
 
 function App() {
   return (
     <Router>
       <Routes>
-          <Route path="/signup" element={
-        <AuthRoutes><SignUp /></AuthRoutes>} />
-          <Route path="/login" element={<AuthRoutes><Login />
+        <Route path="/signup" element={
+          <AuthRoutes><SignUp /></AuthRoutes>} />
+        <Route path="/login" element={<AuthRoutes><Login />
         </AuthRoutes>} />
         <Route
           path="/verify"
@@ -60,6 +70,14 @@ function App() {
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPanel />
+            </AdminRoute>
           }
         />
         <Route path="/about" element={<About />} />

@@ -707,36 +707,24 @@
     font-size: 14px;
 }
 
-/* Add this to your Dashboard.css file */
-.pending-badge {
-    display: flex;
-    align-items: center;
-    background-color: #3a360f;
-    color: #f0b90b;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 6px 12px;
-    border-radius: 20px;
-}
+/* Add this to your existing Dashboard.css */
 
-.pending-icon {
-    margin-right: 5px;
-    font-weight: bold;
-}
-
-.logout-button {
-    background-color: #ff5757;
-    color: #ffffff;
+.admin-button {
+    background-color: #9333ea;
+    /* Purple color to distinguish it */
+    color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     padding: 10px 15px;
     font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
+    margin-right: 10px;
     transition: background-color 0.2s;
 }
 
-.logout-button:hover {
-    background-color: #ff3d3d;
+.admin-button:hover {
+    background-color: #7e22ce;
 }
 
 /* Media Queries */

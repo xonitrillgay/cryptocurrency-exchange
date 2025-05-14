@@ -1,0 +1,94 @@
+.admin-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f8fafc;
+}
+
+.admin-header {
+    background-color: #1e293b;
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.back-button {
+    background-color: transparent;
+    border: 1px solid white;
+    color: white;
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.back-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-content {
+    padding: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.admin-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.admin-card h2 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #334155;
+    margin-bottom: 12px;
+}
+
+.admin-card p {
+    color: #64748b;
+    margin-bottom: 20px;
+}
+
+.admin-action-button {
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.admin-action-button:hover {
+    background-color: #2563eb;
+}
+
+.admin-loading,
+.admin-error,
+.admin-unauthorized {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-size: 18px;
+    color: #64748b;
+}
+
+.admin-error {
+    color: #ef4444;
+}
+
+.admin-unauthorized {
+    color: #f59e0b;
+}

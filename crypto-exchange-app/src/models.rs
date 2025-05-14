@@ -1,21 +1,19 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Selectable, Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Queryable, Selectable, Debug, Clone, Serialize)]
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
     pub id: i32,
     pub username: String,
     pub email: String,
-    #[serde(skip_serializing)]
     pub password: String,
-    pub created_at: chrono::NaiveDateTime,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub is_admin: bool, // Add this new field
 }
 
-#[derive(Insertable)]
-#[derive(Deserialize)]
+#[derive(Insertable, Deserialize)]
 #[diesel(table_name = crate::schema::users)]
 pub struct NewUser {
     pub username: String,
@@ -28,16 +26,18 @@ pub struct UserResponse {
     pub id: i32,
     pub username: String,
     pub email: String,
-    pub created_at: chrono::NaiveDateTime,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub is_admin: bool, // Add this new field
 }
 
 impl From<User> for UserResponse {
     fn from(user: User) -> Self {
-        Self {
+        UserResponse {
             id: user.id,
             username: user.username,
             email: user.email,
             created_at: user.created_at,
+            is_admin: user.is_admin, // Add this new field
         }
     }
 }
@@ -48,8 +48,7 @@ pub struct LoginRequest {
     pub password: String,
 }
 
-#[derive(Queryable, Selectable, Debug, Clone)]
-#[derive(Serialize)]
+#[derive(Queryable, Selectable, Debug, Clone, Serialize)]
 #[diesel(table_name = crate::schema::user_verifications)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct UserVerification {
@@ -160,8 +159,7 @@ impl<E> From<Result<UserVerification, E>> for VerificationResponse {
                 Self {
                     id: 0,
                     verification_status: "error".to_string(),
-                    created_at: chrono::NaiveDateTime::from_timestamp_opt(0, 0)
-                        .unwrap_or_default(),
+                    created_at: chrono::NaiveDateTime::from_timestamp_opt(0, 0).unwrap_or_default(),
                     id_document: None,
                 }
             }

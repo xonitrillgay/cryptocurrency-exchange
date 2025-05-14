@@ -9,6 +9,7 @@ function Dashboard() {
     const [topCryptos, setTopCryptos] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState('');
+    const [isAdmin, setIsAdmin] = useState(false);
 
     // Enhanced function to get proper display name from user data
     const getDisplayName = (user) => {
@@ -41,6 +42,11 @@ function Dashboard() {
 
         // If we have an ID but nothing else, just use a friendly format
         return `User ${user.id ? '#' + user.id : ''}`;
+    };
+
+    // Add this function for the admin button
+    const navigateToAdminPanel = () => {
+        navigate('/admin');
     };
 
     useEffect(() => {
@@ -87,17 +93,21 @@ function Dashboard() {
 
                     if (userResponse.ok) {
                         const userDataResponse = await userResponse.json();
+
                         // Ensure we extract the user data correctly from the response
                         const apiUserData = userDataResponse.user || userDataResponse;
 
-                        // Set the display_name property explicitly using our helper function
-                        const userWithDisplayName = {
-                            ...apiUserData,
-                            display_name: getDisplayName(apiUserData)
-                        };
+                        // Set the user data
+                        setUserData(apiUserData);
 
-                        console.log("user response", userResponse)
-                        setUserData(userWithDisplayName);
+                        // Check and set admin status
+                        if (apiUserData && apiUserData.is_admin) {
+                            setIsAdmin(true);
+                        }
+
+                        console.log("user response", userResponse);
+                        // Remove this line that's causing the error
+                        // setUserData(userWithDisplayName);
                         console.log("User data fetched successfully");
                     } else {
                         // Handle 401 specifically
@@ -274,6 +284,17 @@ function Dashboard() {
                         <input type="text" placeholder="Search..." className="search-input" />
                     </div>
                     <button className="deposit-button">Deposit</button>
+
+                    {/* Add Admin Button if user is admin */}
+                    {isAdmin && (
+                        <button
+                            className="admin-button"
+                            onClick={navigateToAdminPanel}
+                        >
+                            Admin Panel
+                        </button>
+                    )}
+
                     <div className="user-profile">
                         <span className="username">
                             {userData?.display_name || getDisplayName(userData) || userData?.email?.split('@')[0]}
@@ -285,8 +306,7 @@ function Dashboard() {
                     <button className="logout-button" onClick={() => {
                         localStorage.removeItem('auth_token');
                         navigate('/login');
-                    }
-                    }>
+                    }}>
                         Logout
                     </button>
                 </div>

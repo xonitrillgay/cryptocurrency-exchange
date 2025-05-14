@@ -536,8 +536,8 @@ async fn verification_status(
 
 #[get("/profile")]
 async fn user_profile(
-    pool: web::Data<db::DbPool>,
     req: HttpRequest,
+    pool: web::Data<db::DbPool>,
 ) -> Result<HttpResponse, actix_web::Error> {
     // Extract user_id from JWT token
     let current_user_id = auth::extract_user_id(&req)?;
@@ -546,65 +546,51 @@ async fn user_profile(
         actix_web::error::ErrorInternalServerError("Failed to get database connection")
     })?;
 
-    // Get basic user information
+    // Get user data
     use schema::users::dsl::*;
     let user_result = web::block(move || {
         users
             .filter(id.eq(current_user_id))
-            .first::<models::User>(&mut *conn)
-            .optional()
+            .first::<models::User>(&mut conn)
     })
     .await
-    .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+    .map_err(|_| actix_web::error::ErrorInternalServerError("Failed to query database"))?;
 
-    match user_result {
-        Ok(Some(user)) => {
-            // Convert to UserResponse to avoid sending password
-            let user_response = models::UserResponse::from(user);
-
-            // Get verification information if available
-            let mut conn = pool.get().map_err(|_| {
-                actix_web::error::ErrorInternalServerError("Failed to get database connection")
-            })?;
-
-            use schema::user_verifications::dsl::*;
-            let verification_result = web::block(move || {
-                user_verifications
-                    .filter(user_id.eq(current_user_id))
-                    .first::<models::UserVerification>(&mut *conn)
-                    .optional()
-            })
-            .await
-            .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
-
-            // Create the response based on whether verification data exists
-            match verification_result {
-                Ok(Some(verification)) => Ok(HttpResponse::Ok().json(serde_json::json!({
-                    "user": user_response,
-                    "verification": models::VerificationResponse::from(verification)
-                }))),
-                Ok(None) => {
-                    // User hasn't submitted verification yet
-                    Ok(HttpResponse::Ok().json(serde_json::json!({
-                        "user": user_response,
-                        "verification": null
-                    })))
-                }
-                Err(_) => {
-                    // Still return user data even if verification fetching fails
-                    Ok(HttpResponse::Ok().json(serde_json::json!({
-                        "user": user_response,
-                        "verification": null
-                    })))
-                }
-            }
+    let user = match user_result {
+        Ok(user) => user,
+        Err(_) => {
+            return Ok(HttpResponse::NotFound().json(serde_json::json!({
+                "error": "User not found"
+            })));
         }
-        Ok(None) => Ok(HttpResponse::NotFound().json(serde_json::json!({
-            "error": "User not found"
-        }))),
-        Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
-            "error": "Database error when retrieving user data"
-        }))),
+    };
+
+    // Create response with UserResponse which now includes is_admin
+    let response = models::UserResponse::from(user);
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({ "user": response })))
+}
+
+// Add this new endpoint for admin access
+
+#[get("/check")]
+async fn check_admin_access(
+    req: HttpRequest,
+    pool: web::Data<db::DbPool>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // Check if the user has admin access
+    match auth::require_admin(&req, &pool).await {
+        Ok(_) => {
+            // User is an admin
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "status": "success",
+                "message": "You have admin access"
+            })))
+        }
+        Err(response) => {
+            // Not an admin, return the error response
+            Ok(response)
+        }
     }
 }
 
@@ -647,6 +633,9 @@ async fn main() -> std::io::Result<()> {
                     .service(upload_id_document),
             )
             .service(web::scope("/user").service(user_profile))
+            .service(
+                web::scope("/admin").service(check_admin_access), // Add more admin endpoints here
+            )
     })
     .bind(format!("{}:{}", host, port))?
     .run()

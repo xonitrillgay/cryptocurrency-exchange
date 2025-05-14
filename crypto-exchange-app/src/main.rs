@@ -1,4 +1,5 @@
 use actix_cors::Cors;
+use actix_files::Files;
 use actix_multipart::Multipart;
 use actix_web::http::header;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, Responder, get, post, put, web};
@@ -26,7 +27,7 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 const UPLOAD_DIR: &str =
     "/home/maria/Documents/cryptocurrency-exchange/crypto-exchange-app/uploads/id_documents";
@@ -165,6 +166,29 @@ async fn upload_id_document(
             return Ok(HttpResponse::BadRequest().json(serde_json::json!({
                 "error": "You must complete personal information verification before uploading ID document"
             })));
+        }
+
+        // Set appropriate permissions for the file
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&file_path)
+                .map_err(|e| {
+                    actix_web::error::ErrorInternalServerError(format!(
+                        "Failed to get permissions: {}",
+                        e
+                    ))
+                })?
+                .permissions();
+
+            // Set read/write permissions for owner and read permissions for group
+            perms.set_mode(0o644); // Owner can read/write, group and others can read
+            std::fs::set_permissions(&file_path, perms).map_err(|e| {
+                actix_web::error::ErrorInternalServerError(format!(
+                    "Failed to set permissions: {}",
+                    e
+                ))
+            })?;
         }
 
         return Ok(HttpResponse::Ok().json(serde_json::json!({
@@ -736,6 +760,41 @@ async fn update_verification_status(
     }
 }
 
+// Add this new endpoint
+
+use std::path::PathBuf;
+
+#[get("/document/{filename}")]
+async fn serve_document(
+    req: HttpRequest,
+    filename: web::Path<String>,
+    pool: web::Data<db::DbPool>,
+) -> Result<actix_files::NamedFile, actix_web::Error> {
+    // Only admins can access documents
+    match auth::require_admin(&req, &pool).await {
+        Ok(_) => {
+            // Admin is authenticated, serve the file
+            let filename = filename.into_inner();
+            // Fix: Look for files in the correct directory
+            let path = PathBuf::from("uploads/id_documents").join(&filename);
+
+            log::info!("Attempting to serve document: {:?}", path);
+
+            match actix_files::NamedFile::open(&path) {
+                Ok(file) => {
+                    log::info!("Successfully serving document: {:?}", filename);
+                    Ok(file)
+                }
+                Err(e) => {
+                    log::error!("Failed to open document {}: {}", filename, e);
+                    Err(actix_web::error::ErrorNotFound("Document not found"))
+                }
+            }
+        }
+        Err(_) => Err(actix_web::error::ErrorForbidden("Admin access required")),
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -747,6 +806,12 @@ async fn main() -> std::io::Result<()> {
     let pool = db::establish_connection_pool();
 
     info!("Starting server at {}:{}", host, port);
+
+    // Create uploads directory if it doesn't exist
+    let uploads_dir = Path::new("uploads");
+    if !uploads_dir.exists() {
+        std::fs::create_dir_all(uploads_dir).expect("Failed to create uploads directory");
+    }
 
     HttpServer::new(move || {
         let cors = Cors::default()
@@ -764,6 +829,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(pool.clone()))
             .wrap(actix_web::middleware::Logger::default())
             .wrap(cors)
+            // Add this line to serve static files
+            .service(Files::new("/uploads", "uploads").show_files_listing())
             .service(health_check)
             .service(users_route)
             .service(sign_up)
@@ -779,7 +846,8 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/admin")
                     .service(check_admin_access)
                     .service(verification_queue)
-                    .service(update_verification_status), // Add more admin endpoints here
+                    .service(update_verification_status)
+                    .service(serve_document),
             )
     })
     .bind(format!("{}:{}", host, port))?

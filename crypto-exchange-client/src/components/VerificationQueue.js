@@ -10,6 +10,7 @@ function VerificationQueue() {
     const [queue, setQueue] = useState([]);
     const [selectedVerification, setSelectedVerification] = useState(null);
     const [processingAction, setProcessingAction] = useState(false);
+    const [documentImage, setDocumentImage] = useState(null);
 
     useEffect(() => {
         const checkAdminAndFetchQueue = async () => {
@@ -132,6 +133,42 @@ function VerificationQueue() {
         navigate('/admin');
     };
 
+    const fetchDocumentImage = async (filename) => {
+        try {
+            const token = localStorage.getItem('auth_token');
+            if (!token || !filename) return null;
+
+            // Extract just the filename from the path if needed
+            const actualFilename = filename.split('/').pop();
+
+            const response = await fetch(`http://localhost:8080/admin/document/${actualFilename}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                return URL.createObjectURL(blob);
+            } else {
+                console.error('Failed to load document image:', response.status);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error loading document image:', error);
+            return null;
+        }
+    };
+
+    useEffect(() => {
+        if (selectedVerification?.verification?.id_front_path) {
+            fetchDocumentImage(selectedVerification.verification.id_front_path)
+                .then(imageUrl => setDocumentImage(imageUrl));
+        } else {
+            setDocumentImage(null);
+        }
+    }, [selectedVerification]);
+
     if (isLoading) {
         return <div className="verification-queue-loading">Loading verification queue...</div>;
     }
@@ -225,15 +262,21 @@ function VerificationQueue() {
                                 <h3>ID Document</h3>
                                 {selectedVerification.verification.id_front_path ? (
                                     <div className="id-document-preview">
-                                        <img
-                                            src={`http://localhost:8080/uploads/${selectedVerification.verification.id_front_path.split('/').pop()}`}
-                                            alt="ID Document"
-                                            onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PHBhdGggZD0iTTE4IDExdjoiPjwvcGF0aD48cGF0aCBkPSJNNyA0aC42YTIgMiAwIDAgMSAxLjQyLjU5TDEwLjQxIDYgMTMuNiA5LjE4YTIgMiAwIDAgMS41OSAxLjQydi44YTIgMiAwIDAgMSAyIDJINHYtN2EyIDIgMCAwIDEgMi0yeiI+PC9wYXRoPjxwYXRoIGQ9Ik0xMiAxNmE0IDQgMCAwIDEtNC00SDE2YTQgNCAwIDAgMS00IDR6Ij48L3BhdGg+PHBhdGggZD0ibCAyMiAyLTUgNSI+PC9wYXRoPjxwYXRoIGQ9Ik0yIDIyIDcgMTciPjwvcGF0aD48L3N2Zz4=';
-                                                e.target.classList.add('error-image');
-                                            }}
-                                        />
+                                        {documentImage ? (
+                                            <img
+                                                src={documentImage}
+                                                alt="ID Document"
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PHBhdGggZD0iTTE4IDExdjoiPjwvcGF0aD48cGF0aCBkPSJNNyA0aC42YTIgMiAwIDAgMSAxLjQyLjU5TDEwLjQxIDYgMTMuNiA5LjE4YTIgMiAwIDAgMS41OSAxLjQydi44YTIgMiAwIDAgMSAyIDJINHYtN2EyIDIgMCAwIDEgMi0yeiI+PC9wYXRoPjxwYXRoIGQ9Ik0xMiAxNmE0IDQgMCAwIDEtNC00SDE2YTQgNCAwIDAgMS00IDR6Ij48L3BhdGg+PHBhdGggZD0ibCAyMiAyLTUgNSI+PC9wYXRoPjxwYXRoIGQ9Ik0yIDIyIDcgMTciPjwvcGF0aD48L3N2Zz4=';
+                                                    e.target.classList.add('error-image');
+                                                }}
+                                            />
+                                        ) : (
+                                            <div className="loading-document">
+                                                <p>Loading document...</p>
+                                            </div>
+                                        )}
                                         <div className="document-submission-info">
                                             <p>Submitted: {formatDate(selectedVerification.verification.updated_at)}</p>
                                         </div>

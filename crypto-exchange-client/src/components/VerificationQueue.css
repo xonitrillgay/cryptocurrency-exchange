@@ -164,6 +164,7 @@
     max-height: 400px;
     border-radius: 6px;
     border: 1px solid #e2e8f0;
+    object-fit: contain;
 }
 
 .id-document-preview img.error-image {
@@ -251,6 +252,16 @@
 
 .verification-queue-unauthorized {
     color: #f59e0b;
+}
+
+.loading-document {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    background-color: #f1f5f9;
+    border-radius: 6px;
+    color: #64748b;
 }
 
 @media (max-width: 768px) {

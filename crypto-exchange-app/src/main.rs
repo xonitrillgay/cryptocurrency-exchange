@@ -26,6 +26,7 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
+use serde::{Serialize, Deserialize};
 
 const UPLOAD_DIR: &str =
     "/home/maria/Documents/cryptocurrency-exchange/crypto-exchange-app/uploads/id_documents";
@@ -594,6 +595,147 @@ async fn check_admin_access(
     }
 }
 
+// Add these new imports at the top if not already present
+use chrono::NaiveDateTime;
+
+// Add this new endpoint for the verification queue
+#[get("/queue")]
+async fn verification_queue(
+    req: HttpRequest,
+    pool: web::Data<db::DbPool>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // Check if the user has admin access first
+    match auth::require_admin(&req, &pool).await {
+        Ok(_) => {
+            // User is an admin, proceed to fetch the verification queue
+            let mut conn = pool.get().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to get database connection")
+            })?;
+
+            // Get all user verifications with pending ID document verification
+            use schema::user_verifications::dsl::*;
+
+            let pending_verifications = web::block(move || {
+                user_verifications
+                    .filter(id_verification_status.eq("pending_review"))
+                    .order_by(updated_at.desc())
+                    .load::<models::UserVerification>(&mut conn)
+            })
+            .await
+            .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+            match pending_verifications {
+                Ok(verifications) => {
+                    // Structure to return verification with user info
+                    #[derive(Serialize)]
+                    struct VerificationWithUser {
+                        verification: models::UserVerification,
+                        user: Option<models::User>,
+                    }
+
+                    // For each verification, get the associated user
+                    let mut verifications_with_users = Vec::new();
+                    for verification in verifications {
+                        let mut conn = pool.get().map_err(|_| {
+                            actix_web::error::ErrorInternalServerError(
+                                "Failed to get database connection",
+                            )
+                        })?;
+
+                        use schema::users::dsl::*;
+                        let user_result = web::block(move || {
+                            users
+                                .filter(id.eq(verification.user_id))
+                                .first::<models::User>(&mut conn)
+                                .optional()
+                        })
+                        .await
+                        .map_err(|_| {
+                            actix_web::error::ErrorInternalServerError("Database error")
+                        })?;
+
+                        verifications_with_users.push(VerificationWithUser {
+                            verification,
+                            user: user_result.unwrap_or(None),
+                        });
+                    }
+
+                    Ok(HttpResponse::Ok().json(serde_json::json!({
+                        "queue": verifications_with_users
+                    })))
+                }
+                Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "Failed to retrieve verification queue"
+                }))),
+            }
+        }
+        Err(response) => {
+            // Not an admin, return the error response
+            Ok(response)
+        }
+    }
+}
+
+// Add an endpoint to update verification status
+#[put("/verify/{verification_id}")]
+async fn update_verification_status(
+    req: HttpRequest,
+    pool: web::Data<db::DbPool>,
+    path: web::Path<i32>,
+    status_update: web::Json<serde_json::Value>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // Check if the user has admin access
+    match auth::require_admin(&req, &pool).await {
+        Ok(_) => {
+            let verification_id = path.into_inner();
+            // Extract status string before moving status_update
+            let status = status_update
+                .get("status")
+                .and_then(|s| s.as_str())
+                .unwrap_or("pending_review")
+                .to_string(); // Convert to owned String to avoid borrowing issues
+
+            if status != "approved" && status != "rejected" {
+                return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                    "error": "Invalid status. Must be 'approved' or 'rejected'."
+                })));
+            }
+
+            let mut conn = pool.get().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to get database connection")
+            })?;
+
+            // Update the verification status
+            use schema::user_verifications::dsl::*;
+            let result = web::block(move || {
+                diesel::update(user_verifications.filter(id.eq(verification_id)))
+                    .set((
+                        id_verification_status.eq(status),
+                        id_verified_at.eq(chrono::Local::now().naive_local()),
+                        updated_at.eq(chrono::Local::now().naive_local()),
+                    ))
+                    .get_result::<models::UserVerification>(&mut conn)
+            })
+            .await
+            .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+            match result {
+                Ok(updated_verification) => Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "status": "success",
+                    "verification": models::VerificationResponse::from(updated_verification)
+                }))),
+                Err(_) => Ok(HttpResponse::NotFound().json(serde_json::json!({
+                    "error": "Verification not found or could not be updated"
+                }))),
+            }
+        }
+        Err(response) => {
+            // Not an admin, return the error response
+            Ok(response)
+        }
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -634,7 +776,10 @@ async fn main() -> std::io::Result<()> {
             )
             .service(web::scope("/user").service(user_profile))
             .service(
-                web::scope("/admin").service(check_admin_access), // Add more admin endpoints here
+                web::scope("/admin")
+                    .service(check_admin_access)
+                    .service(verification_queue)
+                    .service(update_verification_status), // Add more admin endpoints here
             )
     })
     .bind(format!("{}:{}", host, port))?

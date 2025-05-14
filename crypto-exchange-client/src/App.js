@@ -10,6 +10,7 @@ import Terms from './components/Terms';
 import Privacy from './components/Privacy';
 import Support from './components/Support';
 import AdminPanel from './components/AdminPanel';
+import VerificationQueue from './components/VerificationQueue';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -44,42 +45,16 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/signup" element={
-          <AuthRoutes><SignUp /></AuthRoutes>} />
-        <Route path="/login" element={<AuthRoutes><Login />
-        </AuthRoutes>} />
-        <Route
-          path="/verify"
-          element={
-            <ProtectedRoute>
-              <VerifyIdentity />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/document-upload"
-          element={
-            <ProtectedRoute>
-              <DocumentUpload />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminPanel />
-            </AdminRoute>
-          }
-        />
+        <Route path="/signup" element={<AuthRoutes><SignUp /></AuthRoutes>} />
+        <Route path="/login" element={<AuthRoutes><Login /></AuthRoutes>} />
+        <Route path="/verify" element={<ProtectedRoute><VerifyIdentity /></ProtectedRoute>} />
+        <Route path="/document-upload" element={<ProtectedRoute><DocumentUpload /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+        {/* Admin routes */}
+        <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
+        <Route path="/admin/queue" element={<AdminRoute><VerificationQueue /></AdminRoute>} />
+
         <Route path="/about" element={<About />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />

@@ -8,6 +8,7 @@ function AdminPanel() {
     const [isAdmin, setIsAdmin] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState('');
+    const [verificationCount, setVerificationCount] = useState(0);
 
     useEffect(() => {
         const checkAdminAccess = async () => {
@@ -30,6 +31,24 @@ function AdminPanel() {
 
                 if (response.ok) {
                     setIsAdmin(true);
+
+                    // Get pending verification count
+                    try {
+                        const queueResponse = await fetch('http://localhost:8080/admin/queue', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                        });
+
+                        if (queueResponse.ok) {
+                            const data = await queueResponse.json();
+                            setVerificationCount(data.queue?.length || 0);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching verification count:', error);
+                    }
                 } else {
                     // Not an admin, redirect to dashboard
                     navigate('/dashboard');
@@ -73,10 +92,18 @@ function AdminPanel() {
                     <button className="admin-action-button">Manage Users</button>
                 </div>
 
-                <div className="admin-card">
+                <div className="admin-card verification-card">
                     <h2>Verification Queue</h2>
                     <p>Review pending ID verification requests</p>
-                    <button className="admin-action-button">View Queue</button>
+                    {verificationCount > 0 && (
+                        <div className="verification-badge">{verificationCount}</div>
+                    )}
+                    <button
+                        className="admin-action-button"
+                        onClick={() => navigate('/admin/queue')}
+                    >
+                        View Queue
+                    </button>
                 </div>
 
                 <div className="admin-card">

@@ -92,3 +92,23 @@
 .admin-unauthorized {
     color: #f59e0b;
 }
+
+.verification-card {
+    position: relative;
+}
+
+.verification-badge {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background-color: #ef4444;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    font-weight: bold;
+}

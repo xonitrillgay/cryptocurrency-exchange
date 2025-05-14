@@ -1,0 +1,264 @@
+.verification-queue-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f8fafc;
+}
+
+.queue-header {
+    background-color: #1e293b;
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.queue-header h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.back-button {
+    background-color: transparent;
+    border: 1px solid white;
+    color: white;
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.back-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.queue-error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    padding: 12px 20px;
+    margin: 16px;
+    border-radius: 6px;
+}
+
+.queue-content {
+    display: flex;
+    flex: 1;
+    padding: 20px;
+    gap: 20px;
+}
+
+.queue-list {
+    flex: 1;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    max-width: 400px;
+}
+
+.queue-list h2 {
+    margin: 0;
+    padding: 16px;
+    background-color: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 18px;
+    color: #334155;
+}
+
+.verification-items {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+}
+
+.verification-item {
+    padding: 16px;
+    border-bottom: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.verification-item:hover {
+    background-color: #f8fafc;
+}
+
+.verification-item.selected {
+    background-color: #eff6ff;
+    border-left: 4px solid #3b82f6;
+}
+
+.item-user-info {
+    margin-bottom: 8px;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #334155;
+}
+
+.item-email {
+    font-size: 14px;
+    color: #64748b;
+}
+
+.item-date {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.queue-empty {
+    padding: 20px;
+    text-align: center;
+    color: #64748b;
+}
+
+.verification-details {
+    flex: 2;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+}
+
+.verification-details h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #334155;
+    font-size: 20px;
+}
+
+.details-section {
+    margin-bottom: 24px;
+}
+
+.details-section h3 {
+    font-size: 16px;
+    color: #0f172a;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-row {
+    display: flex;
+    margin-bottom: 8px;
+}
+
+.detail-label {
+    font-weight: 600;
+    width: 120px;
+    color: #64748b;
+}
+
+.detail-value {
+    color: #334155;
+    flex: 1;
+}
+
+.id-document-preview {
+    margin-top: 12px;
+}
+
+.id-document-preview img {
+    max-width: 100%;
+    max-height: 400px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.id-document-preview img.error-image {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+    padding: 20px;
+    background-color: #f1f5f9;
+}
+
+.document-submission-info {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #64748b;
+}
+
+.no-document {
+    padding: 16px;
+    background-color: #f1f5f9;
+    border-radius: 6px;
+    color: #64748b;
+    text-align: center;
+}
+
+.verification-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.approve-button,
+.reject-button {
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.approve-button {
+    background-color: #10b981;
+    color: white;
+}
+
+.approve-button:hover {
+    background-color: #059669;
+}
+
+.reject-button {
+    background-color: #ef4444;
+    color: white;
+}
+
+.reject-button:hover {
+    background-color: #dc2626;
+}
+
+.approve-button:disabled,
+.reject-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.no-verification-selected {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px;
+    color: #64748b;
+    background-color: #f8fafc;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.verification-queue-loading,
+.verification-queue-unauthorized {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-size: 18px;
+    color: #64748b;
+}
+
+.verification-queue-unauthorized {
+    color: #f59e0b;
+}
+
+@media (max-width: 768px) {
+    .queue-content {
+        flex-direction: column;
+    }
+
+    .queue-list {
+        max-width: 100%;
+    }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './VerificationQueue.css';
 
@@ -11,6 +11,14 @@ function VerificationQueue() {
     const [selectedVerification, setSelectedVerification] = useState(null);
     const [processingAction, setProcessingAction] = useState(false);
     const [documentImage, setDocumentImage] = useState(null);
+
+    // New states for enhanced image viewing
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [zoomLevel, setZoomLevel] = useState(1);
+    const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
+
+    // Replace the existing queue list rendering with this enhanced version
+    const [thumbnailCache, setThumbnailCache] = useState({});
 
     useEffect(() => {
         const checkAdminAndFetchQueue = async () => {
@@ -133,7 +141,8 @@ function VerificationQueue() {
         navigate('/admin');
     };
 
-    const fetchDocumentImage = async (filename) => {
+    // Memoize the fetchDocumentImage function
+    const fetchDocumentImage = useCallback(async (filename) => {
         try {
             const token = localStorage.getItem('auth_token');
             if (!token || !filename) return null;
@@ -158,16 +167,207 @@ function VerificationQueue() {
             console.error('Error loading document image:', error);
             return null;
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (selectedVerification?.verification?.id_front_path) {
+            console.log('Fetching document image:', selectedVerification.verification.id_front_path);
             fetchDocumentImage(selectedVerification.verification.id_front_path)
-                .then(imageUrl => setDocumentImage(imageUrl));
+                .then(imageUrl => {
+                    console.log('Loaded document image:', imageUrl);
+                    setDocumentImage(imageUrl);
+                });
         } else {
             setDocumentImage(null);
         }
-    }, [selectedVerification]);
+    }, [selectedVerification, fetchDocumentImage]);
+
+    // Handle opening the lightbox
+    const openLightbox = () => {
+        console.log('Opening lightbox with image:', documentImage);
+        setLightboxOpen(true);
+        // Reset zoom and position when opening lightbox
+        setZoomLevel(1);
+        setImagePosition({ x: 0, y: 0 });
+    };
+
+    // Handle closing the lightbox
+    const closeLightbox = () => {
+        setLightboxOpen(false);
+    };
+
+    // Handle zoom in
+    const zoomIn = () => {
+        setZoomLevel(prevZoom => Math.min(prevZoom + 0.25, 3));
+    };
+
+    // Handle zoom out
+    const zoomOut = () => {
+        setZoomLevel(prevZoom => Math.max(prevZoom - 0.25, 0.5));
+    };
+
+    // Handle reset zoom
+    const resetZoom = () => {
+        setZoomLevel(1);
+        setImagePosition({ x: 0, y: 0 });
+    };
+
+    // Handle image drag/pan
+    const startPan = (e) => {
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startPosX = imagePosition.x;
+        const startPosY = imagePosition.y;
+
+        const handlePanMove = (moveEvent) => {
+            const deltaX = moveEvent.clientX - startX;
+            const deltaY = moveEvent.clientY - startY;
+
+            setImagePosition({
+                x: startPosX + deltaX,
+                y: startPosY + deltaY
+            });
+        };
+
+        const stopPan = () => {
+            document.removeEventListener('mousemove', handlePanMove);
+            document.removeEventListener('mouseup', stopPan);
+        };
+
+        document.addEventListener('mousemove', handlePanMove);
+        document.addEventListener('mouseup', stopPan);
+    };
+
+    // Modify the existing rendering for the ID document preview
+    const renderIDDocumentPreview = () => {
+        if (!selectedVerification?.verification?.id_front_path) {
+            return <div className="no-document">No ID document has been uploaded.</div>;
+        }
+
+        return (
+            <div className="id-document-preview">
+                {documentImage ? (
+                    <div
+                        className="document-container"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            openLightbox();
+                        }}
+                    >
+                        <img
+                            src={documentImage}
+                            alt="ID Document"
+                            className="thumbnail-image"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PHBhdGggZD0iTTIgMkw1IDE1IDE2IDIyIDIyIDJ6Ij48L3BhdGg+PC9zdmc+';
+                                e.target.classList.add('error-image');
+                            }}
+                        />
+                        <div className="hover-overlay">
+                            <span>Click to view full image</span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="loading-document">
+                        <p>Loading document...</p>
+                    </div>
+                )}
+                <div className="document-submission-info">
+                    <p>Submitted: {formatDate(selectedVerification.verification.updated_at)}</p>
+                </div>
+            </div>
+        );
+    };
+
+    // Render the lightbox
+    const renderLightbox = () => {
+        if (!lightboxOpen || !documentImage) return null;
+
+        return (
+            <div className="id-document-lightbox" onClick={(e) => {
+                e.stopPropagation();
+                closeLightbox();
+            }}>
+                <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="lightbox-header">
+                        <h3>ID Document - {getFullName(selectedVerification.verification)}</h3>
+                        <button className="close-button" onClick={(e) => {
+                            e.stopPropagation();
+                            closeLightbox();
+                        }}>×</button>
+                    </div>
+
+                    <div className="lightbox-body">
+                        <div
+                            className="image-container"
+                            onMouseDown={(e) => {
+                                if (zoomLevel > 1) {
+                                    e.preventDefault();
+                                    startPan(e);
+                                }
+                            }}
+                        >
+                            <img
+                                src={documentImage}
+                                alt="ID Document Full View"
+                                style={{
+                                    transform: `scale(${zoomLevel}) translate(${imagePosition.x / zoomLevel}px, ${imagePosition.y / zoomLevel}px)`,
+                                    cursor: zoomLevel > 1 ? 'grab' : 'default'
+                                }}
+                                draggable="false"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="lightbox-controls">
+                        <button onClick={(e) => { e.stopPropagation(); zoomOut(); }} disabled={zoomLevel <= 0.5}>-</button>
+                        <span>{Math.round(zoomLevel * 100)}%</span>
+                        <button onClick={(e) => { e.stopPropagation(); zoomIn(); }} disabled={zoomLevel >= 3}>+</button>
+                        <button className="reset-button" onClick={(e) => { e.stopPropagation(); resetZoom(); }}>Reset</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Memoize the getThumbnail function with useCallback
+    const getThumbnail = useCallback(async (verification) => {
+        if (!verification.id_front_path) return null;
+
+        // Check cache first
+        if (thumbnailCache[verification.id]) {
+            return thumbnailCache[verification.id];
+        }
+
+        try {
+            const imageUrl = await fetchDocumentImage(verification.id_front_path);
+            if (imageUrl) {
+                // Update cache
+                setThumbnailCache(prev => ({
+                    ...prev,
+                    [verification.id]: imageUrl
+                }));
+                return imageUrl;
+            }
+        } catch (error) {
+            console.error("Error loading thumbnail:", error);
+        }
+        return null;
+    }, [thumbnailCache, fetchDocumentImage]);
+
+    // Add useEffect to preload thumbnails for queue items
+    useEffect(() => {
+        const preloadThumbnails = async () => {
+            for (const item of queue) {
+                if (item.verification.id_front_path && !thumbnailCache[item.verification.id]) {
+                    await getThumbnail(item.verification);
+                }
+            }
+        };
+
+        preloadThumbnails();
+    }, [queue, getThumbnail, thumbnailCache]); // Added missing dependencies
 
     if (isLoading) {
         return <div className="verification-queue-loading">Loading verification queue...</div>;
@@ -202,21 +402,40 @@ function VerificationQueue() {
                         </div>
                     ) : (
                         <div className="verification-items">
-                            {queue.map((item) => (
-                                <div
-                                    key={item.verification.id}
-                                    className={`verification-item ${selectedVerification?.verification.id === item.verification.id ? 'selected' : ''}`}
-                                    onClick={() => handleVerificationSelect(item)}
-                                >
-                                    <div className="item-user-info">
-                                        <div className="item-name">{getFullName(item.verification)}</div>
-                                        <div className="item-email">{item.user?.email || 'Email not available'}</div>
+                            {queue.map((item) => {
+                                const thumbUrl = thumbnailCache[item.verification.id];
+
+                                return (
+                                    <div
+                                        key={item.verification.id}
+                                        className={`verification-item ${selectedVerification?.verification.id === item.verification.id ? 'selected' : ''}`}
+                                        onClick={() => handleVerificationSelect(item)}
+                                    >
+                                        {/* Thumbnail preview */}
+                                        {thumbUrl ? (
+                                            <img
+                                                src={thumbUrl}
+                                                alt="ID Thumbnail"
+                                                className="verification-thumb"
+                                            />
+                                        ) : (
+                                            <div className="verification-thumb no-image">
+                                                No ID
+                                            </div>
+                                        )}
+
+                                        <div className="item-content">
+                                            <div className="item-user-info">
+                                                <div className="item-name">{getFullName(item.verification)}</div>
+                                                <div className="item-email">{item.user?.email || 'Email not available'}</div>
+                                            </div>
+                                            <div className="item-date">
+                                                Submitted: {formatDate(item.verification.updated_at)}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="item-date">
-                                        Submitted: {formatDate(item.verification.updated_at)}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -260,30 +479,7 @@ function VerificationQueue() {
 
                             <div className="details-section">
                                 <h3>ID Document</h3>
-                                {selectedVerification.verification.id_front_path ? (
-                                    <div className="id-document-preview">
-                                        {documentImage ? (
-                                            <img
-                                                src={documentImage}
-                                                alt="ID Document"
-                                                onError={(e) => {
-                                                    e.target.onerror = null;
-                                                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWltYWdlLW9mZiI+PHBhdGggZD0iTTE4IDExdjoiPjwvcGF0aD48cGF0aCBkPSJNNyA0aC42YTIgMiAwIDAgMSAxLjQyLjU5TDEwLjQxIDYgMTMuNiA5LjE4YTIgMiAwIDAgMS41OSAxLjQydi44YTIgMiAwIDAgMSAyIDJINHYtN2EyIDIgMCAwIDEgMi0yeiI+PC9wYXRoPjxwYXRoIGQ9Ik0xMiAxNmE0IDQgMCAwIDEtNC00SDE2YTQgNCAwIDAgMS00IDR6Ij48L3BhdGg+PHBhdGggZD0ibCAyMiAyLTUgNSI+PC9wYXRoPjxwYXRoIGQ9Ik0yIDIyIDcgMTciPjwvcGF0aD48L3N2Zz4=';
-                                                    e.target.classList.add('error-image');
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="loading-document">
-                                                <p>Loading document...</p>
-                                            </div>
-                                        )}
-                                        <div className="document-submission-info">
-                                            <p>Submitted: {formatDate(selectedVerification.verification.updated_at)}</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="no-document">No ID document has been uploaded.</div>
-                                )}
+                                {renderIDDocumentPreview()}
                             </div>
 
                             <div className="verification-actions">
@@ -310,6 +506,9 @@ function VerificationQueue() {
                     )}
                 </div>
             </div>
+
+            {/* Lightbox Component */}
+            {renderLightbox()}
         </div>
     );
 }

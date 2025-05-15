@@ -76,6 +76,9 @@
     border-bottom: 1px solid #e2e8f0;
     cursor: pointer;
     transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .verification-item:hover {
@@ -264,12 +267,205 @@
     color: #64748b;
 }
 
-@media (max-width: 768px) {
-    .queue-content {
-        flex-direction: column;
-    }
+/* Enhanced ID Document Preview */
+.document-container {
+    position: relative;
+    display: inline-block;
+    cursor: zoom-in;
+    /* Changes cursor to zoom icon to indicate image can be enlarged */
+    overflow: hidden;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    max-width: 100%;
+    border: 2px solid transparent; /* Add border for hover effect */
+}
 
-    .queue-list {
-        max-width: 100%;
-    }
+.document-container:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    border-color: #3b82f6; /* Highlight border on hover */
+}
+
+.thumbnail-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    object-fit: contain;
+    transition: transform 0.3s ease;
+}
+
+.hover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 6px;
+}
+
+.hover-overlay span {
+    color: white;
+    font-weight: 600;
+    padding: 8px 16px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 4px;
+}
+
+.document-container:hover .hover-overlay {
+    opacity: 1;
+}
+
+/* Lightbox Component */
+.id-document-lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.lightbox-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 1200px;
+    height: 90%;
+    max-height: 800px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.lightbox-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.lightbox-header h3 {
+    margin: 0;
+    color: #334155;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    color: #64748b;
+}
+
+.close-button:hover {
+    color: #ef4444;
+}
+
+.lightbox-body {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background-color: #f1f5f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.image-container {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.image-container img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    transition: transform 0.1s ease;
+    transform-origin: center center;
+    user-select: none;
+}
+
+.lightbox-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    gap: 12px;
+    border-top: 1px solid #e2e8f0;
+    background-color: #f8fafc;
+}
+
+.lightbox-controls button {
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    background-color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #334155;
+    font-weight: 600;
+    min-width: 36px;
+}
+
+.lightbox-controls button:hover:not(:disabled) {
+    background-color: #f1f5f9;
+}
+
+.lightbox-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.lightbox-controls span {
+    min-width: 60px;
+    text-align: center;
+    font-weight: 600;
+    color: #334155;
+}
+
+.reset-button {
+    margin-left: 8px;
+}
+
+/* Queue list thumbnails enhancement */
+.verification-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.verification-thumb {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid #e2e8f0;
+}
+
+.verification-thumb.no-image {
+    background-color: #f1f5f9;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #94a3b8;
+    font-size: 10px;
+    text-align: center;
 }

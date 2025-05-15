@@ -85,15 +85,15 @@ function DocumentUpload() {
     setFile(selectedFile);
     setApiError('');
 
-    // Create preview for images
-    if (fileType === 'image/jpeg' || fileType === 'image/png') {
+    // Use a single read operation for both purposes
+    if (selectedFile.type === 'image/jpeg' || selectedFile.type === 'image/png') {
       const reader = new FileReader();
       reader.onload = () => {
         setFilePreview(reader.result);
+        // Now we only read the file once
       };
       reader.readAsDataURL(selectedFile);
     } else {
-      // For PDF, just display name
       setFilePreview(null);
     }
   };

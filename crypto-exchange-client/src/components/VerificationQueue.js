@@ -198,12 +198,18 @@ function VerificationQueue() {
 
     // Handle zoom in
     const zoomIn = () => {
-        setZoomLevel(prevZoom => Math.min(prevZoom + 0.25, 3));
+        setZoomLevel(prevZoom => {
+            const newZoom = Math.min(prevZoom + 0.25, 3);
+            return newZoom;
+        });
     };
 
     // Handle zoom out
     const zoomOut = () => {
-        setZoomLevel(prevZoom => Math.max(prevZoom - 0.25, 0.5));
+        setZoomLevel(prevZoom => {
+            const newZoom = Math.max(prevZoom - 0.25, 0.5);
+            return newZoom;
+        });
     };
 
     // Handle reset zoom
@@ -311,6 +317,7 @@ function VerificationQueue() {
                             <img
                                 src={documentImage}
                                 alt="ID Document Full View"
+                                className={zoomLevel > 1 ? "zoomed" : ""}
                                 style={{
                                     transform: `scale(${zoomLevel}) translate(${imagePosition.x / zoomLevel}px, ${imagePosition.y / zoomLevel}px)`,
                                     cursor: zoomLevel > 1 ? 'grab' : 'default'

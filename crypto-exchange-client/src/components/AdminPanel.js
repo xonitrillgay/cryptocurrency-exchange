@@ -9,6 +9,7 @@ function AdminPanel() {
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState('');
     const [verificationCount, setVerificationCount] = useState(0);
+    const [userCount, setUserCount] = useState(0); // Add state for user count
 
     useEffect(() => {
         const checkAdminAccess = async () => {
@@ -48,6 +49,24 @@ function AdminPanel() {
                         }
                     } catch (error) {
                         console.error('Error fetching verification count:', error);
+                    }
+
+                    // Get total user count
+                    try {
+                        const usersResponse = await fetch('http://localhost:8080/admin/users', {
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                            },
+                        });
+
+                        if (usersResponse.ok) {
+                            const data = await usersResponse.json();
+                            setUserCount(data.users?.length || 0);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching user count:', error);
                     }
                 } else {
                     // Not an admin, redirect to dashboard
@@ -89,7 +108,15 @@ function AdminPanel() {
                 <div className="admin-card">
                     <h2>User Management</h2>
                     <p>Manage user accounts, permissions, and verification status</p>
-                    <button className="admin-action-button">Manage Users</button>
+                    {userCount > 0 && (
+                        <div className="user-badge">{userCount}</div>
+                    )}
+                    <button
+                        className="admin-action-button"
+                        onClick={() => navigate('/admin/users')}
+                    >
+                        Manage Users
+                    </button>
                 </div>
 
                 <div className="admin-card verification-card">

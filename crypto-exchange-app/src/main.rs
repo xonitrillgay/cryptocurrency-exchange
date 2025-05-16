@@ -2,7 +2,9 @@ use actix_cors::Cors;
 use actix_files::Files;
 use actix_multipart::Multipart;
 use actix_web::http::header;
-use actix_web::{App, HttpRequest, HttpResponse, HttpServer, Responder, get, post, put, web};
+use actix_web::{
+    App, HttpRequest, HttpResponse, HttpServer, Responder, delete, get, post, put, web,
+};
 use diesel::RunQueryDsl;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
@@ -795,6 +797,315 @@ async fn serve_document(
     }
 }
 
+// Get all users (for admin)
+#[get("/users")]
+async fn admin_get_users(
+    req: HttpRequest,
+    pool: web::Data<db::DbPool>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // Check if the user has admin access first
+    match auth::require_admin(&req, &pool).await {
+        Ok(_) => {
+            // User is an admin, fetch all users
+            let mut conn = pool.get().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to get database connection")
+            })?;
+
+            // Get all users
+            use schema::users::dsl::*;
+            let all_users =
+                web::block(move || users.order_by(id.asc()).load::<models::User>(&mut conn))
+                    .await
+                    .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+            match all_users {
+                Ok(user_list) => {
+                    // Convert users to UserResponse to avoid sending passwords
+                    let user_responses: Vec<models::UserResponse> = user_list
+                        .into_iter()
+                        .map(models::UserResponse::from)
+                        .collect();
+
+                    Ok(HttpResponse::Ok().json(serde_json::json!({
+                        "users": user_responses
+                    })))
+                }
+                Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "Failed to retrieve users"
+                }))),
+            }
+        }
+        Err(response) => {
+            // Not an admin, return the error response
+            Ok(response)
+        }
+    }
+}
+
+// Create new user (admin only)
+#[post("/users")]
+async fn admin_create_user(
+    req: HttpRequest,
+    pool: web::Data<db::DbPool>,
+    new_user_data: web::Json<models::NewUser>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // Check if the user has admin access
+    match auth::require_admin(&req, &pool).await {
+        Ok(_) => {
+            // Validate password
+            if let Err(message) = validate_password(&new_user_data.password) {
+                return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                    "error": message
+                })));
+            }
+
+            // Hash the password
+            let hashed_password = match hash_password(&new_user_data.password) {
+                Ok(hash) => hash,
+                Err(e) => {
+                    error!("Password hashing error: {}", e);
+                    return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                        "error": "Failed to process password"
+                    })));
+                }
+            };
+
+            // Create new user with hashed password
+            let mut new_user = new_user_data.into_inner();
+            new_user.password = hashed_password;
+
+            // Insert into database
+            let mut conn = pool.get().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to get database connection")
+            })?;
+
+            let user_result = web::block(move || {
+                diesel::insert_into(schema::users::table)
+                    .values(&new_user)
+                    .get_result::<models::User>(&mut conn)
+            })
+            .await
+            .map_err(|e| {
+                error!("Failed to create user: {:?}", e);
+                actix_web::error::ErrorInternalServerError("Failed to create user")
+            })?;
+
+            match user_result {
+                Ok(user) => {
+                    let user_response = models::UserResponse::from(user);
+                    Ok(HttpResponse::Created().json(serde_json::json!({
+                        "message": "User created successfully",
+                        "user": user_response
+                    })))
+                }
+                Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "Failed to create user"
+                }))),
+            }
+        }
+        Err(response) => {
+            // Not an admin, return the error response
+            Ok(response)
+        }
+    }
+}
+
+// Update existing user (admin only)
+#[put("/users/{user_id}")]
+async fn admin_update_user(
+    req: HttpRequest,
+    path: web::Path<i32>,
+    pool: web::Data<db::DbPool>,
+    user_data: web::Json<serde_json::Value>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // Check if the user has admin access
+    match auth::require_admin(&req, &pool).await {
+        Ok(_) => {
+            let user_id = path.into_inner();
+            let mut conn = pool.get().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to get database connection")
+            })?;
+
+            // Check if user exists
+            use schema::users::dsl::*;
+            let user_exists = web::block(move || {
+                users
+                    .filter(id.eq(user_id))
+                    .count()
+                    .get_result::<i64>(&mut conn)
+            })
+            .await
+            .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+            if user_exists.unwrap_or(0) == 0 {
+                return Ok(HttpResponse::NotFound().json(serde_json::json!({
+                    "error": "User not found"
+                })));
+            }
+
+            // Prepare update data
+            let mut update_data = serde_json::Map::new();
+
+            // Extract fields to update
+            if let Some(username_val) = user_data.get("username") {
+                if let Some(username_str) = username_val.as_str() {
+                    update_data.insert(
+                        "username".to_string(),
+                        serde_json::Value::String(username_str.to_string()),
+                    );
+                }
+            }
+
+            if let Some(email_val) = user_data.get("email") {
+                if let Some(email_str) = email_val.as_str() {
+                    update_data.insert(
+                        "email".to_string(),
+                        serde_json::Value::String(email_str.to_string()),
+                    );
+                }
+            }
+
+            if let Some(is_admin_val) = user_data.get("is_admin") {
+                if let Some(is_admin_bool) = is_admin_val.as_bool() {
+                    update_data.insert(
+                        "is_admin".to_string(),
+                        serde_json::Value::Bool(is_admin_bool),
+                    );
+                }
+            }
+
+            // Handle password separately (needs to be hashed)
+            let mut conn = pool.get().map_err(|_| {
+                actix_web::error::ErrorInternalServerError("Failed to get database connection")
+            })?;
+
+            if let Some(password_val) = user_data.get("password") {
+                if let Some(password_str) = password_val.as_str() {
+                    if !password_str.is_empty() {
+                        // Validate password
+                        if let Err(message) = validate_password(password_str) {
+                            return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                                "error": message
+                            })));
+                        }
+
+                        // Hash the password
+                        let hashed_password = match hash_password(password_str) {
+                            Ok(hash) => hash,
+                            Err(e) => {
+                                error!("Password hashing error: {}", e);
+                                return Ok(HttpResponse::InternalServerError().json(
+                                    serde_json::json!({
+                                        "error": "Failed to process password"
+                                    }),
+                                ));
+                            }
+                        };
+
+                        update_data.insert(
+                            "password".to_string(),
+                            serde_json::Value::String(hashed_password),
+                        );
+                    }
+                }
+            }
+
+            // If nothing to update, return early
+            if update_data.is_empty() {
+                return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                    "error": "No valid fields to update"
+                })));
+            }
+
+            // Perform the update
+            let update_user_id = user_id; // Clone for the closure
+            let update_result = web::block(move || -> Result<i32, diesel::result::Error> {
+                // Perform updates directly without collecting them first
+
+                // Collect all the fields to update
+                if let Some(username_val) = update_data.get("username") {
+                    if let Some(username_str) = username_val.as_str() {
+                        diesel::update(users.filter(id.eq(update_user_id)))
+                            .set(username.eq(username_str))
+                            .execute(&mut conn)?;
+                    }
+                }
+
+                if let Some(email_val) = update_data.get("email") {
+                    if let Some(email_str) = email_val.as_str() {
+                        diesel::update(users.filter(id.eq(update_user_id)))
+                            .set(email.eq(email_str))
+                            .execute(&mut conn)?;
+                    }
+                }
+
+                if let Some(password_val) = update_data.get("password") {
+                    if let Some(password_str) = password_val.as_str() {
+                        diesel::update(users.filter(id.eq(update_user_id)))
+                            .set(password.eq(password_str))
+                            .execute(&mut conn)?;
+                    }
+                }
+
+                if let Some(is_admin_val) = update_data.get("is_admin") {
+                    if let Some(is_admin_bool) = is_admin_val.as_bool() {
+                        diesel::update(users.filter(id.eq(update_user_id)))
+                            .set(is_admin.eq(is_admin_bool))
+                            .execute(&mut conn)?;
+                    }
+                }
+
+                // Return 1 to indicate success
+                Ok(1)
+            })
+            .await
+            .map_err(|e| {
+                error!("Failed to update user: {:?}", e);
+                actix_web::error::ErrorInternalServerError("Failed to update user")
+            })?;
+
+            match update_result {
+                Ok(_) => {
+                    // Fetch the updated user to return in response
+                    let mut conn = pool.get().map_err(|_| {
+                        actix_web::error::ErrorInternalServerError(
+                            "Failed to get database connection",
+                        )
+                    })?;
+
+                    let updated_user = web::block(move || {
+                        users
+                            .filter(id.eq(user_id))
+                            .first::<models::User>(&mut conn)
+                    })
+                    .await
+                    .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+                    match updated_user {
+                        Ok(user) => {
+                            let user_response = models::UserResponse::from(user);
+                            Ok(HttpResponse::Ok().json(serde_json::json!({
+                                "message": "User updated successfully",
+                                "user": user_response
+                            })))
+                        }
+                        Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                            "error": "Failed to retrieve updated user"
+                        }))),
+                    }
+                }
+                Err(_) => Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "Failed to update user"
+                }))),
+            }
+        }
+        Err(response) => {
+            // Not an admin, return the error response
+            Ok(response)
+        }
+    }
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -847,7 +1158,10 @@ async fn main() -> std::io::Result<()> {
                     .service(check_admin_access)
                     .service(verification_queue)
                     .service(update_verification_status)
-                    .service(serve_document),
+                    .service(serve_document)
+                    .service(admin_get_users) // Add this line
+                    .service(admin_create_user) // Add this line
+                    .service(admin_update_user) // Add this line
             )
     })
     .bind(format!("{}:{}", host, port))?

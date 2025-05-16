@@ -291,7 +291,7 @@ function DocumentUpload() {
           </div>
         )}
 
-        {verificationStatus?.id_document && (
+        {verificationStatus?.id_document && !successMessage && (
           <div className="dashboard-navigation">
             <button
               className="dashboard-button"

@@ -4,12 +4,13 @@ import './VerifyIdentity.css';
 
 // Country options for dropdown
 const COUNTRIES = [
-    { code: "US", name: "United States" },
-    { code: "GB", name: "United Kingdom" },
-    { code: "CA", name: "Canada" },
     { code: "AU", name: "Australia" },
-    { code: "DE", name: "Germany" },
+    { code: "CA", name: "Canada" },
     { code: "FR", name: "France" },
+    { code: "DE", name: "Germany" },
+    { code: "GB", name: "United Kingdom" },
+    { code: "UA", name: "Ukraine" },
+    { code: "US", name: "United States" },
     // Add more countries as needed
 ];
 

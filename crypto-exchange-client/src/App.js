@@ -11,6 +11,7 @@ import Privacy from './components/Privacy';
 import Support from './components/Support';
 import AdminPanel from './components/AdminPanel';
 import VerificationQueue from './components/VerificationQueue';
+import UserManagement from './components/UserManagement';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -54,6 +55,7 @@ function App() {
         {/* Admin routes */}
         <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
         <Route path="/admin/queue" element={<AdminRoute><VerificationQueue /></AdminRoute>} />
+        <Route path="/admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
 
         <Route path="/about" element={<About />} />
         <Route path="/terms" element={<Terms />} />

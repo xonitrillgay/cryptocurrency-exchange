@@ -1,9 +1,14 @@
 // @generated automatically by Diesel CLI.
 
-pub mod sql_types {
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "verification_action"))]
-    pub struct VerificationAction;
+diesel::table! {
+    password_reset_tokens (id) {
+        id -> Int4,
+        user_id -> Int4,
+        token -> Varchar,
+        created_at -> Timestamp,
+        expires_at -> Timestamp,
+        used -> Bool,
+    }
 }
 
 diesel::table! {
@@ -57,24 +62,11 @@ diesel::table! {
     }
 }
 
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::VerificationAction;
-
-    verification_audits (id) {
-        id -> Uuid,
-        user_id -> Int4,
-        admin_id -> Int4,
-        action -> VerificationAction,
-        reason -> Nullable<Text>,
-        created_at -> Timestamptz,
-    }
-}
-
+diesel::joinable!(password_reset_tokens -> users (user_id));
 diesel::joinable!(user_verifications -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    password_reset_tokens,
     user_verifications,
     users,
-    verification_audits,
 );

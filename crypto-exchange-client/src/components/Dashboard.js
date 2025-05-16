@@ -343,7 +343,7 @@ function Dashboard() {
                             <span className="nav-icon">💰</span>
                             <span className="nav-text">Trade</span>
                         </li>
-                        <li className="nav-item">
+                        <li className="nav-item" onClick={() => navigate('/settings')}>
                             <span className="nav-icon">👤</span>
                             <span className="nav-text">Account</span>
                         </li>
@@ -420,6 +420,7 @@ function Dashboard() {
                                     Complete Verification
                                 </button>
                             )}
+                            {/* Remove the System Settings button here */}
                         </div>
 
                         {apiError && (

@@ -73,6 +73,15 @@ input.error {
     font-size: 14px;
 }
 
+.success-message {
+    background-color: #ecfdf5;
+    color: #047857;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
 .login-button {
     width: 100%;
     background-color: #3b82f6;

@@ -173,3 +173,38 @@ pub struct IdDocumentResponse {
     pub id_front_path: Option<String>,
     pub id_verified_at: Option<chrono::NaiveDateTime>,
 }
+
+// Add this struct for password reset requests
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PasswordResetRequest {
+    pub email: String,
+}
+
+// If you want to implement password reset tokens, you should also add:
+#[derive(Debug, Queryable, Insertable)]
+#[diesel(table_name = crate::schema::password_reset_tokens)]
+pub struct PasswordResetToken {
+    pub id: i32,
+    pub user_id: i32,
+    pub token: String,
+    pub created_at: chrono::NaiveDateTime,
+    pub expires_at: chrono::NaiveDateTime,
+    pub used: bool,
+}
+
+#[derive(Debug, Insertable)]
+#[diesel(table_name = crate::schema::password_reset_tokens)]
+pub struct NewPasswordResetToken {
+    pub user_id: i32,
+    pub token: String,
+    pub expires_at: chrono::NaiveDateTime,
+}
+
+// Add this new model for password reset validation
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResetPasswordRequest {
+    pub email: String,
+    pub token: String,
+    pub new_password: String,
+}

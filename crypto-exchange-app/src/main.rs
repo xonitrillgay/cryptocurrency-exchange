@@ -22,6 +22,7 @@ use uuid::Uuid;
 
 pub mod auth;
 pub mod db;
+pub mod email;
 pub mod models;
 pub mod schema;
 
@@ -1106,9 +1107,242 @@ async fn admin_update_user(
     }
 }
 
+// This would go in your main.rs or a separate auth file
+#[post("/user/request-password-reset")]
+async fn request_password_reset(
+    pool: web::Data<db::DbPool>,
+    request_data: web::Json<models::PasswordResetRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let user_email = request_data.email.clone();
+
+    // Check if user exists first
+    let mut conn = pool.get().map_err(|_| {
+        actix_web::error::ErrorInternalServerError("Failed to get database connection")
+    })?;
+
+    use schema::users::dsl::*;
+    // Clone the email before moving it into the closure
+    let email_for_query = user_email.clone();
+    let user_result = web::block(move || {
+        users
+            .filter(email.eq(email_for_query))
+            .first::<models::User>(&mut conn)
+            .optional()
+    })
+    .await
+    .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+    // We'll generate and send a reset token only if the user exists
+    if let Ok(Some(user)) = user_result {
+        // Generate a secure random token
+        let reset_token = uuid::Uuid::new_v4().to_string();
+
+        // Set token expiration (1 hour from now)
+        let token_expires_at = chrono::Utc::now() + chrono::Duration::hours(1);
+
+        // Get a new connection for the next operation
+        let mut conn = pool.get().map_err(|_| {
+            actix_web::error::ErrorInternalServerError("Failed to get database connection")
+        })?;
+
+        // Store token in password_reset_tokens table
+        use schema::password_reset_tokens::dsl::*;
+
+        // First, delete any existing tokens for this user
+        let user_id_for_delete = user.id;
+        let delete_result = web::block(move || {
+            diesel::delete(password_reset_tokens.filter(user_id.eq(user_id_for_delete)))
+                .execute(&mut conn)
+        })
+        .await;
+
+        // Log but don't fail if deletion fails
+        if let Err(e) = &delete_result {
+            log::warn!("Failed to delete existing tokens: {:?}", e);
+        }
+
+        // Get a new connection after the delete operation
+        let mut conn = pool.get().map_err(|_| {
+            actix_web::error::ErrorInternalServerError("Failed to get database connection")
+        })?;
+
+        // Create new reset token record
+        let new_token = models::NewPasswordResetToken {
+            user_id: user.id,
+            token: reset_token.clone(),
+            expires_at: token_expires_at.naive_utc(),
+        };
+
+        let insert_result = web::block(move || {
+            diesel::insert_into(schema::password_reset_tokens::table)
+                .values(&new_token)
+                .execute(&mut conn)
+        })
+        .await;
+
+        match insert_result {
+            Ok(_) => {
+                // Send the reset email
+                if let Err(err) =
+                    crate::email::send_password_reset_email(&user.email, &reset_token).await
+                {
+                    // Log the error but don't reveal it to the user
+                    error!("Failed to send password reset email: {}", err);
+
+                    // Fall back to logging the token for development environments
+                    info!(
+                        "Password reset link for {}: http://localhost:3000/reset-password?token={}&email={}",
+                        user.email, reset_token, user.email
+                    );
+                }
+            }
+            Err(e) => {
+                // Log the error but continue to return success for security
+                error!("Failed to store password reset token: {:?}", e);
+            }
+        }
+    } else {
+        // User not found, but we don't want to reveal this fact for security reasons
+        info!(
+            "Password reset requested for non-existent email: {}",
+            user_email
+        );
+    }
+
+    // For security reasons, always return success even if there were internal errors
+    // This prevents user enumeration attacks
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "message": "If an account with that email exists, a reset link has been sent."
+    })))
+}
+
+#[post("/user/reset-password")]
+async fn reset_password(
+    pool: web::Data<db::DbPool>,
+    request_data: web::Json<models::ResetPasswordRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    // Validate the new password
+    if let Err(message) = validate_password(&request_data.new_password) {
+        return Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": message
+        })));
+    }
+
+    let mut conn = pool.get().map_err(|_| {
+        actix_web::error::ErrorInternalServerError("Failed to get database connection")
+    })?;
+
+    // Get user ID from email
+    use schema::users::dsl as users_dsl;
+    let email_for_query = request_data.email.clone();
+    let user_result = web::block(move || {
+        users_dsl::users
+            .filter(users_dsl::email.eq(email_for_query))
+            .select(users_dsl::id)
+            .first::<i32>(&mut conn)
+            .optional()
+    })
+    .await
+    .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+    // Get new connection for next query
+    let mut conn = pool.get().map_err(|_| {
+        actix_web::error::ErrorInternalServerError("Failed to get database connection")
+    })?;
+
+    // Check if user exists and validate the token
+    if let Ok(Some(user_id)) = user_result {
+        // Check if token is valid, not expired, and not used
+        use schema::password_reset_tokens::dsl as tokens_dsl;
+        let token_for_query = request_data.token.clone();
+        let token_result = web::block(move || {
+            tokens_dsl::password_reset_tokens
+                .filter(tokens_dsl::user_id.eq(user_id))
+                .filter(tokens_dsl::token.eq(token_for_query))
+                .filter(tokens_dsl::expires_at.gt(chrono::Utc::now().naive_utc()))
+                .filter(tokens_dsl::used.eq(false))
+                .first::<models::PasswordResetToken>(&mut conn)
+                .optional()
+        })
+        .await
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+        match token_result {
+            Ok(Some(token_record)) => {
+                // Token is valid, hash the new password
+                let hashed_password = match hash_password(&request_data.new_password) {
+                    Ok(hash) => hash,
+                    Err(e) => {
+                        error!("Password hashing error: {}", e);
+                        return Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                            "error": "Failed to process password"
+                        })));
+                    }
+                };
+
+                // Get new connection for update operations
+                let mut conn = pool.get().map_err(|_| {
+                    actix_web::error::ErrorInternalServerError("Failed to get database connection")
+                })?;
+
+                // Update the user's password
+                let user_id_for_update = token_record.user_id;
+                let update_result = web::block(move || {
+                    diesel::update(users_dsl::users.filter(users_dsl::id.eq(user_id_for_update)))
+                        .set(users_dsl::password.eq(&hashed_password))
+                        .execute(&mut conn)
+                })
+                .await
+                .map_err(|_| actix_web::error::ErrorInternalServerError("Database error"))?;
+
+                if let Ok(rows_affected) = update_result {
+                    if rows_affected > 0 {
+                        // Password updated successfully, now mark the token as used
+                        let mut conn = pool.get().map_err(|_| {
+                            actix_web::error::ErrorInternalServerError(
+                                "Failed to get database connection",
+                            )
+                        })?;
+
+                        let token_id = token_record.id;
+                        let _ = web::block(move || {
+                            diesel::update(tokens_dsl::password_reset_tokens.find(token_id))
+                                .set(tokens_dsl::used.eq(true))
+                                .execute(&mut conn)
+                        })
+                        .await;
+
+                        return Ok(HttpResponse::Ok().json(serde_json::json!({
+                            "message": "Password has been reset successfully. You can now log in with your new password."
+                        })));
+                    }
+                }
+
+                // If we reach this point, password update failed
+                Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "Failed to update password"
+                })))
+            }
+            _ => {
+                // Token is invalid, expired, or already used
+                Ok(HttpResponse::BadRequest().json(serde_json::json!({
+                    "error": "Invalid or expired password reset token"
+                })))
+            }
+        }
+    } else {
+        // User not found, but for security reasons we use the same error message
+        Ok(HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Invalid or expired password reset token"
+        })))
+    }
+}
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
+    if std::env::var("SMTP_PASSWORD").is_err() {
+        eprintln!("Warning: SMTP_PASSWORD not found in environment");
+    }
     env_logger::init();
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
@@ -1146,22 +1380,27 @@ async fn main() -> std::io::Result<()> {
             .service(users_route)
             .service(sign_up)
             .service(login)
+            .service(request_password_reset)
+            .service(reset_password)
             .service(
                 web::scope("/verify")
                     .service(update_verify)
                     .service(verification_status)
                     .service(upload_id_document),
             )
-            .service(web::scope("/user").service(user_profile))
+            .service(
+                web::scope("/user")
+                    .service(user_profile), // Add this line
+            )
             .service(
                 web::scope("/admin")
                     .service(check_admin_access)
                     .service(verification_queue)
                     .service(update_verification_status)
                     .service(serve_document)
-                    .service(admin_get_users) // Add this line
-                    .service(admin_create_user) // Add this line
-                    .service(admin_update_user) // Add this line
+                    .service(admin_get_users)
+                    .service(admin_create_user)
+                    .service(admin_update_user), // Remove the password reset endpoint from here
             )
     })
     .bind(format!("{}:{}", host, port))?

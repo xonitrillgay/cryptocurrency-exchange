@@ -6,7 +6,6 @@ function Dashboard() {
     const navigate = useNavigate();
     const [userData, setUserData] = useState(null);
     const [verificationStatus, setVerificationStatus] = useState(null);
-    const [topCryptos, setTopCryptos] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState('');
     const [isAdmin, setIsAdmin] = useState(false);
@@ -106,8 +105,6 @@ function Dashboard() {
                         }
 
                         console.log("user response", userResponse);
-                        // Remove this line that's causing the error
-                        // setUserData(userWithDisplayName);
                         console.log("User data fetched successfully");
                     } else {
                         // Handle 401 specifically
@@ -156,32 +153,7 @@ function Dashboard() {
                     setVerificationStatus({ status: 'unknown' });
                 }
 
-                // Try fetching market data
-                try {
-                    const marketResponse = await fetch('http://localhost:8080/market/top-cryptos');
-                    if (marketResponse.ok) {
-                        const marketData = await marketResponse.json();
-                        setTopCryptos(marketData.data || []);
-                    } else {
-                        // Use mock data as fallback
-                        console.warn("Using mock market data");
-                        setTopCryptos([
-                            { symbol: 'BTC', price: '67842.50', change_24h: '2.5', volume_24h: '24500000000' },
-                            { symbol: 'ETH', price: '3421.75', change_24h: '1.8', volume_24h: '12700000000' },
-                            { symbol: 'SOL', price: '143.22', change_24h: '-2.1', volume_24h: '3200000000' },
-                            { symbol: 'ADA', price: '0.45', change_24h: '-0.7', volume_24h: '950000000' },
-                        ]);
-                    }
-                } catch (marketError) {
-                    console.warn("API error when fetching market data:", marketError);
-                    // Use mock data as fallback
-                    setTopCryptos([
-                        { symbol: 'BTC', price: '67842.50', change_24h: '2.5', volume_24h: '24500000000' },
-                        { symbol: 'ETH', price: '3421.75', change_24h: '1.8', volume_24h: '12700000000' },
-                        { symbol: 'SOL', price: '143.22', change_24h: '-2.1', volume_24h: '3200000000' },
-                        { symbol: 'ADA', price: '0.45', change_24h: '-0.7', volume_24h: '950000000' },
-                    ]);
-                }
+                // Removed the market data fetching code that was causing 404 errors
 
             } catch (error) {
                 console.error('Error in dashboard data fetching:', error);
@@ -193,15 +165,10 @@ function Dashboard() {
 
         fetchUserData();
 
-        // Polling for price updates every 30 seconds
-        const intervalId = setInterval(() => {
-            fetch('http://localhost:8080/market/top-cryptos')
-                .then(response => response.json())
-                .then(data => setTopCryptos(data.data || []))
-                .catch(err => console.error('Error updating prices:', err));
-        }, 30000);
+        // Removed the polling interval for market data updates
 
-        return () => clearInterval(intervalId);
+        // Return an empty cleanup function
+        return () => { };
     }, [navigate]);
 
     if (isLoading) {
@@ -335,7 +302,7 @@ function Dashboard() {
                             <span className="nav-icon">📊</span>
                             <span className="nav-text">Dashboard</span>
                         </li>
-                        <li className="nav-item">
+                        <li className="nav-item" onClick={() => navigate('/markets')}>
                             <span className="nav-icon">💱</span>
                             <span className="nav-text">Markets</span>
                         </li>
@@ -345,11 +312,11 @@ function Dashboard() {
                         </li>
                         <li className="nav-item" onClick={() => navigate('/settings')}>
                             <span className="nav-icon">👤</span>
-                            <span className="nav-text">Account</span>
+                            <span className="nav-text">Account Settings</span>
                         </li>
                         <li className="nav-item">
                             <span className="nav-icon">⚙️</span>
-                            <span className="nav-text">Settings</span>
+                            <span className="nav-text">System Settings</span>
                         </li>
                     </ul>
                 </nav>
@@ -497,53 +464,6 @@ function Dashboard() {
                                     {isVerified && hasDeposited ? "Trade Now" : "Deposit Required"}
                                 </button>
                             </div>
-                        </div>
-                    </div>
-
-                    <div className="market-overview">
-                        <div className="section-header">
-                            <h3>Market Overview</h3>
-                            <div className="tabs">
-                                <button className="tab active">Popular</button>
-                                <button className="tab">Derivatives</button>
-                                <button className="tab">Spot</button>
-                            </div>
-                        </div>
-
-                        <div className="crypto-table">
-                            <div className="table-header">
-                                <div className="col">Pair</div>
-                                <div className="col">Last Price</div>
-                                <div className="col">24h Change</div>
-                                <div className="col">24h Volume</div>
-                                <div className="col">Actions</div>
-                            </div>
-
-                            {topCryptos.length > 0 ? (
-                                topCryptos.map((crypto, index) => (
-                                    <div className="table-row" key={index}>
-                                        <div className="col crypto-name">
-                                            <span className="crypto-icon">{crypto.symbol.charAt(0)}</span>
-                                            <span>{crypto.symbol}/USD</span>
-                                        </div>
-                                        <div className="col">${parseFloat(crypto.price).toLocaleString()}</div>
-                                        <div className={`col ${parseFloat(crypto.change_24h) >= 0 ? 'positive' : 'negative'}`}>
-                                            {parseFloat(crypto.change_24h) >= 0 ? '+' : ''}{crypto.change_24h}%
-                                        </div>
-                                        <div className="col">${parseFloat(crypto.volume_24h).toLocaleString()}</div>
-                                        <div className="col">
-                                            <button
-                                                className="trade-button"
-                                                disabled={!isVerified || !hasDeposited}
-                                            >
-                                                Trade
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="no-data">Loading market data...</div>
-                            )}
                         </div>
                     </div>
 

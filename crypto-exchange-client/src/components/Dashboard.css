@@ -737,6 +737,57 @@
     background-color: #7e22ce;
 }
 
+/* Footer styles */
+.dashboard-footer {
+    background-color: #1a1f2a;
+    border-top: 1px solid #2e3444;
+    padding: 20px 30px;
+    margin-top: auto;
+}
+
+.footer-links {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-bottom: 15px;
+}
+
+.footer-links a {
+    color: #8e8e8e;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s ease, transform 0.2s ease;
+    position: relative;
+}
+
+.footer-links a:hover {
+    color: #f0b90b;
+    transform: translateY(-1px);
+}
+
+.footer-links a::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: #f0b90b;
+    transition: width 0.2s ease;
+}
+
+.footer-links a:hover::after {
+    width: 100%;
+}
+
+.copyright {
+    text-align: center;
+    color: #6c757d;
+    font-size: 12px;
+}
+
 /* Media Queries */
 @media (max-width: 1024px) {
     .feature-cards {
@@ -811,7 +862,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #f0b90b; /* Matching the deposit button gold color for consistency */
+    color: #f0b90b;
+    /* Matching the deposit button gold color for consistency */
 }
 
 /* Add focus state for accessibility */
@@ -825,7 +877,7 @@
     .logout-button {
         border-color: rgba(255, 255, 255, 0.15);
     }
-    
+
     .logout-button:hover {
         background-color: rgba(240, 185, 11, 0.1);
     }
@@ -834,9 +886,10 @@
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .logout-text {
-        display: none; /* Hide text on small screens */
+        display: none;
+        /* Hide text on small screens */
     }
-    
+
     .logout-button {
         padding: 8px;
     }

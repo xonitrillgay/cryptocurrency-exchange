@@ -1,0 +1,244 @@
+/* Import Dashboard base styles to ensure consistency */
+@import './Dashboard.css';
+
+/* Markets Page Specific Styles */
+.markets-header {
+    margin-bottom: 24px;
+}
+
+.markets-header h2 {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.markets-header p {
+    color: #6c757d;
+    margin-bottom: 16px;
+}
+
+/* Updated styling for market stats box */
+.market-stats-box {
+    display: flex;
+    justify-content: space-between;
+    background-color: #1a1f2a;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.stat-item {
+    flex: 1;
+    font-family: 'Roboto', sans-serif;
+    font-size: 16px;
+    color: #333333;
+    font-weight: 500;
+    text-align: right;
+    padding: 10px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #8e8e8e;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.stat-value.positive {
+    color: #3dd768;
+}
+
+.stat-value.negative {
+    color: #ff5757;
+}
+
+.market-tabs {
+    display: flex;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #2e3444;
+}
+
+.market-tab {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    font-weight: 500;
+    color: #8e8e8e;
+    cursor: pointer;
+    position: relative;
+}
+
+.market-tab.active {
+    color: #f0b90b;
+}
+
+.market-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #f0b90b;
+}
+
+.markets-table {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.table-header {
+    display: flex;
+    padding: 15px;
+    font-size: 14px;
+    color: #8e8e8e;
+    background-color: #242935;
+    border-bottom: 1px solid #2e3444;
+}
+
+.table-row {
+    display: flex;
+    padding: 15px;
+    border-bottom: 1px solid #2e3444;
+    font-size: 14px;
+    color: #f5f5f5;
+    transition: background-color 0.2s;
+}
+
+.table-row:hover {
+    background-color: #2a3042;
+}
+
+.col {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.col-name {
+    flex: 2;
+}
+
+.col-actions {
+    justify-content: flex-end;
+    flex: 0.7;
+}
+
+.crypto-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #2e3444;
+    color: #f0b90b;
+    margin-right: 12px;
+    font-weight: 600;
+}
+
+.crypto-name-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.crypto-name {
+    font-weight: 500;
+    color: #f0f0f0;
+}
+
+.crypto-symbol {
+    font-size: 12px;
+    color: #8e8e8e;
+}
+
+.positive {
+    color: #3dd768;
+    font-weight: 500;
+}
+
+.negative {
+    color: #ff5757;
+    font-weight: 500;
+}
+
+.trade-button {
+    background-color: #f0b90b;
+    color: #000000;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.trade-button:hover {
+    background-color: #f8d12f;
+}
+
+.no-data {
+    padding: 30px;
+    text-align: center;
+    color: #8e8e8e;
+}
+
+.loading {
+    padding: 30px;
+    text-align: center;
+    color: #8e8e8e;
+}
+
+.error-alert {
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #3a2222;
+    color: #ff5757;
+    border-radius: 4px;
+    border: 1px solid #ff5757;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .market-stats-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 1024px) {
+    .col-name {
+        flex: 1.5;
+    }
+
+    .table-header .col:nth-child(4),
+    .table-header .col:nth-child(5),
+    .table-row .col:nth-child(4),
+    .table-row .col:nth-child(5) {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .market-tabs {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 8px;
+    }
+
+    .table-header .col:nth-child(6),
+    .table-row .col:nth-child(6) {
+        display: none;
+    }
+
+    .market-stats-cards {
+        grid-template-columns: 1fr;
+    }
+}

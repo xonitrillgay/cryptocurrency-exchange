@@ -23,8 +23,9 @@ use uuid::Uuid;
 pub mod auth;
 pub mod db;
 pub mod email;
+pub mod markets;
 pub mod models;
-pub mod schema;
+pub mod schema; // Add the markets module
 
 use argon2::{
     Argon2,
@@ -1389,8 +1390,7 @@ async fn main() -> std::io::Result<()> {
                     .service(upload_id_document),
             )
             .service(
-                web::scope("/user")
-                    .service(user_profile), // Add this line
+                web::scope("/user").service(user_profile), // Add this line
             )
             .service(
                 web::scope("/admin")
@@ -1402,6 +1402,7 @@ async fn main() -> std::io::Result<()> {
                     .service(admin_create_user)
                     .service(admin_update_user), // Remove the password reset endpoint from here
             )
+            .service(markets::get_markets) // Add the markets endpoint
     })
     .bind(format!("{}:{}", host, port))?
     .run()

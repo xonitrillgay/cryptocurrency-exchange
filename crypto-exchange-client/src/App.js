@@ -14,6 +14,7 @@ import VerificationQueue from './components/VerificationQueue';
 import UserManagement from './components/UserManagement';
 import Settings from './components/Settings';
 import ResetPassword from './components/ResetPassword';
+import Markets from './components/Markets';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -53,6 +54,7 @@ function App() {
         <Route path="/verify" element={<ProtectedRoute><VerifyIdentity /></ProtectedRoute>} />
         <Route path="/document-upload" element={<ProtectedRoute><DocumentUpload /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/markets" element={<Markets />} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
